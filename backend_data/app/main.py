@@ -19,4 +19,4 @@ app.include_router(health_router, prefix="/health", tags=["health"])
 app.include_router(query_router, prefix="/api", tags=["query"])
 
 # 3. Audit -> Queda en /audit/logs
-app.include_router(audit_router, prefix="/audit", tags=["audit"])
+#app.include_router(audit_router, prefix="/audit", tags=["audit"])

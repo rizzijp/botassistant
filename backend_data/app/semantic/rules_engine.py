@@ -7,10 +7,14 @@ def normalize_text(text: str) -> str:
     text = ''.join(c for c in unicodedata.normalize('NFD', text) if unicodedata.category(c) != 'Mn')
     return re.sub(r'\s+', ' ', text)
 
-# --- CATÁLOGO DE REGLAS (FASE 2.5: REFINED & ANCHORED) ---
-# CAMBIOS CLAVE:
-# 1. Agregamos '^' (inicio) y '$' (fin) a los regex para evitar "falsos positivos" en frases largas.
-# 2. Cambiamos 'pie' por 'bar' en regiones (más legible).
+# --- NOMBRES REALES DE LA BASE DE DATOS ---
+TABLE_SALES = "public.sales"
+TABLE_PROD  = "public.products"
+TABLE_CUST  = "public.customers"
+TABLE_EMP   = "public.employees"
+COL_DATE    = "sale_timestamp"
+
+# --- CATÁLOGO DE REGLAS ---
 
 RULES_CATALOG = [
     # --- A. TOP N (Estricto) ---
@@ -20,7 +24,7 @@ RULES_CATALOG = [
             r"^(?:los|las) (\d+) (?:mejores|peores) productos?$"
         ],
         "response_template": {
-            "sql": "SELECT p.product_name, SUM(f.total) as ventas FROM curated.fact_sales f JOIN curated.dim_product p ON f.product_id = p.product_id GROUP BY p.product_name ORDER BY ventas DESC LIMIT %(p1)s",
+            "sql": "SELECT p.product_name, SUM(f.total) as ventas FROM {TABLE_SALES} f JOIN {TABLE_PROD} p ON f.product_id = p.product_id GROUP BY p.product_name ORDER BY ventas DESC LIMIT %(p1)s",
             "viz_type": "bar",
             "viz_title": "Top {captured} Productos"
         },
@@ -34,14 +38,14 @@ RULES_CATALOG = [
             r"^ingresos?.*(\d{4})$"
         ],
         "response_template": {
-            "sql": "SELECT TO_CHAR(sale_date, 'YYYY-MM') as mes, SUM(total) as ventas FROM curated.fact_sales WHERE year = %(p1)s GROUP BY mes ORDER BY mes ASC",
+            "sql": "SELECT TO_CHAR({COL_DATE}, 'YYYY-MM') as mes, SUM(total) as ventas FROM {TABLE_SALES} WHERE EXTRACT(YEAR FROM {COL_DATE}) = %(p1)s GROUP BY mes ORDER BY mes ASC",
             "viz_type": "line",
             "viz_title": "Evolución Ventas {captured}"
         },
         "params_mapper": lambda captured: int(captured)
     },
 
-    # --- C. BÚSQUEDA ESPECÍFICA (La que causaba problemas) ---
+    # --- C. BÚSQUEDA ESPECÍFICA---
     # Usamos anclas para que NO atrape "Diferencia de ventas..."
     {
         "patterns": [
@@ -52,9 +56,9 @@ RULES_CATALOG = [
         "response_template": {
             "sql": """
                 SELECT p.product_name, SUM(f.total) as ventas
-                FROM curated.fact_sales f
-                JOIN curated.dim_product p ON f.product_id = p.product_id
-                JOIN curated.dim_customer c ON f.customer_id = c.customer_id
+                FROM {TABLE_SALES} f
+                JOIN {TABLE_PROD} p ON f.product_id = p.product_id
+                JOIN {TABLE_CUST} c ON f.customer_id = c.customer_id
                 -- Buscamos en Producto O en Región O en Cliente (Búsqueda Universal)
                 WHERE p.product_name ILIKE %(p1)s 
                    OR p.category ILIKE %(p1)s 
@@ -63,7 +67,7 @@ RULES_CATALOG = [
                 ORDER BY ventas DESC
                 LIMIT 20
             """,
-            "viz_type": "bar", # Cambiado a BAR por ser más seguro
+            "viz_type": "bar",
             "viz_title": "Resultados para '{captured}'"
         },
         "params_mapper": lambda captured: f"%{captured}%"
@@ -81,7 +85,7 @@ RULES_CATALOG = [
     {
         "patterns": [r"^ventas? totales?$", r"^cuanto vendimos$"],
         "response_template": {
-            "sql": "SELECT SUM(total) as total_ventas FROM curated.fact_sales",
+            "sql": "SELECT SUM(total) as total_ventas FROM {TABLE_SALES}",
             "viz_type": "number",
             "viz_title": "Ingresos Totales"
         }

@@ -54,3 +54,44 @@ class QueryPlan(BaseModel):
         default=None, 
         description="Título descriptivo para el gráfico"
     )
+
+
+# --- MODELOS DE DATOS (DTOs) ---
+# Definimos estrictamente qué entra y qué sale de la API.
+
+#class QueryRequest(BaseModel):
+#    user_id: int = Field(..., description="ID del usuario que hace la consulta (para auditoría)")
+#    question: str = Field(..., description="La pregunta en lenguaje natural")
+#    model: Optional[str] = Field(default=MODELO_PRINCIPAL, description="Alias del modelo a usar (ej: 'gpt-4', 'llama-3')")
+
+class QueryRequest(BaseModel):
+    message: str = Field(..., description="La pregunta del usuario en lenguaje natural")
+    session_id: str = Field(..., description="Identificador único de la sesión")
+    user_id: int = Field(..., description="Identificador del usuario")
+    role: str = Field(default="user", description="Rol del usuario (ej: gerente, admin)")
+    model: Optional[str] = Field(default=MODELO_PRINCIPAL, description="Modelo de IA a usar")
+
+#class QueryResponse(BaseModel):
+#    user_id: int
+#    question: str
+#    sql: str
+#    data: List[Dict[str, Any]] # Resultado de la query
+#    columns: List[str]         # Nombres de las columnas para el Frontend
+#    row_count: int
+#    execution_time: float      # Tiempo que tardó en segundos
+#    viz_type: VizType = Field(default="table")
+#    viz_title: Optional[str] = None
+
+class QueryResponse(BaseModel):
+    #user_id: int se puede agregar cuando se implemente el audit log
+    exito: bool
+    session_id: str
+    mensaje: str
+    sql_generado: Optional[str] = None
+    datos: List[Dict[str, Any]] = []
+    columnas: List[str] = []
+    total_filas: int = 0
+    tipo_grafica: Optional[VizType] = None
+    tiene_grafica: bool = False
+    grafica_base64: Optional[str] = None
+
