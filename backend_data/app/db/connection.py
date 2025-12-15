@@ -19,8 +19,9 @@ if not DATABASE_URL:
 # Crear el motor de conexión (Engine)
 engine = create_engine(
     DATABASE_URL,
-    pool_pre_ping=True,  # recomendado para DB remota (Neon)
+    pool_pre_ping=True,  # recomendado para DB remota
     future=True,
+    connect_args={"sslmode": "require"}
 )
 
 # Crear una sesión local para interactuar con la BBDD

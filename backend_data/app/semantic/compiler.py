@@ -86,6 +86,10 @@ def compile_sql(plan: QueryPlan) -> str:
 
     # 5. Construir WHERE
     where_clauses = []
+
+    # Define aquí el nombre REAL de tu columna de fecha en la DB de Render
+    REAL_DATE_COL = "sales.sale_timestamp"
+    
     for f in plan.filters:
         col = col_map.get(f.column, f.column)
         # LIMPIEZA DE OPERADOR: Quitamos comillas o comas extra que la IA alucine
@@ -93,34 +97,25 @@ def compile_sql(plan: QueryPlan) -> str:
         op = f.operator.strip("',\" ")
         val = f.value
 
-        # Lógica para MESES RECURRENTES (Noviembre de cualquier año)
-        if op == "MONTH":
-            # Generamos: EXTRACT(MONTH FROM sale_date) IN (11, 12)
-            where_clauses.append(f"EXTRACT(MONTH FROM {col}) IN ({val})")
-        # B. SMART SEARCH (Búsqueda Amplia Segura)
-        # Si filtramos por producto/categoría con texto...
-        elif "dim_product" in col and isinstance(val, str) and op in ["=", "LIKE", "ILIKE"]:
+
+        # --- LÓGICA VIRTUAL DE FECHAS ---
+        # Si la IA pide filtrar por 'year', usamos la columna timestamp real
+        if f.column == 'year':
+            where_clauses.append(f"EXTRACT(YEAR FROM {REAL_DATE_COL}) {op} {val}")
+            
+        # Si la IA pide filtrar por 'month', extraemos el mes
+        elif f.column == 'month':
+            where_clauses.append(f"EXTRACT(MONTH FROM {REAL_DATE_COL}) {op} {val}")
+            
+        # Lógica para operador MONTH recurrente (ej: "ventas en noviembre")
+        elif op == "MONTH":
+            where_clauses.append(f"EXTRACT(MONTH FROM {REAL_DATE_COL}) IN ({val})")
+
+        # --- RESTO DE LA LÓGICA (Texto y Números) ---
+        elif isinstance(val, str) and op in ["=", "LIKE", "ILIKE"]:
              clean_val = val.replace("%", "")
-             # IMPORTANTE: Los paréntesis externos "( ... OR ... )" evitan errores de lógica con las fechas
-             clause = f"(unaccent(dim_product.category) ILIKE unaccent('%%{clean_val}%%') OR unaccent(dim_product.product_name) ILIKE unaccent('%%{clean_val}%%'))"
-             where_clauses.append(clause)
-        # Lógica estricta: solo acepta valores exactos
-        #val = f"'{f.value}'" if isinstance(f.value, str) else f.value
-        #where_clauses.append(f"{f.column} {f.operator} {val}")
-        # Lógica de flexibilidad para texto:
-        # Si es texto y el operador es '=', usamos búsqueda difusa
-        elif isinstance(val, str) and op == "=":
-            # unaccent: ignora tildes ('Electrónica' == 'Electronica')
-            # ILIKE: ignora mayúsculas ('Norte' == 'norte')
-            # %val%: búsqueda parcial ('Monitor' encuentra 'Monitor Gamer')
-            # SQLAlchemy necesita '%%' para entender que es un literal '%' y no un placeholder
-            where_clauses.append(f"unaccent({col}) ILIKE unaccent('%%{val}%%')")
-        elif isinstance(val, str) and op.lower() == "like": 
-             # Si el LLM ya devolvió 'like' explícitamente
-             clean_val = val.replace("%", "") # Limpiamos por si el LLM ya puso %
              where_clauses.append(f"unaccent({col}) ILIKE unaccent('%%{clean_val}%%')")
         else:
-            # Para números, fechas u otros operadores (>, <), usamos SQL estándar
             formatted_val = f"'{val}'" if isinstance(val, str) else val
             where_clauses.append(f"{col} {op} {formatted_val}")
 

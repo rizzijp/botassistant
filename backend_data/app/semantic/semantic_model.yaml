@@ -1,41 +1,26 @@
 # app/semantic/semantic_model.yaml
 
 tables:
-  # --- HECHOS (FACTS) ---
-  - name: fact_sales
-    schema: curated
+  # --- HECHOS (SALES) ---
+  - name: sales
+    schema: public
     description: "Tabla principal de hechos que registra cada venta individual."
     columns:
       - name: sale_id
         type: integer
         description: "ID único de la venta."
-      - name: sale_date
-        type: date
-        description: "Fecha exacta de la venta (YYYY-MM-DD)."
-      - name: sale_ts
+      - name: sale_timestamp
         type: timestamp
         description: "Marca de tiempo completa de la venta."
+      - name: sales_channel
+        type: text
+        description: "Canal de venta (Online, Tienda física, Distribuidor,etc.)."
       - name: total
         type: numeric
         description: "Monto total de la venta (dinero)."
       - name: quantity
         type: integer
         description: "Cantidad de unidades vendidas."
-      - name: sales_channel
-        type: text
-        description: "Canal de venta (Online, Tienda, etc.)."
-      - name: year
-        type: integer
-        description: "El AÑO de la venta (ej: 2023). Es un NÚMERO. Usa comparadores matemáticos (=, >, <). ESTÁ TOTALMENTE PROHIBIDO usar funciones de texto como 'unaccent', 'lower' o 'ILIKE' sobre esta columna."
-      - name: month
-        type: integer
-        description: "El número de mes (1-12). Es un NÚMERO. Úsalo para ordenar cronológicamente. Usar solo operadores matemáticos (=). ESTÁ TOTALMENTE PROHIBIDO usar funciones de texto como 'unaccent', 'lower' o 'ILIKE' sobre esta columna."
-      - name: day
-        type: integer
-        description: "El día del mes. Es un NÚMERO. ESTÁ TOTALMENTE PROHIBIDO usar funciones de texto como 'unaccent', 'lower' o 'ILIKE' sobre esta columna."
-      - name: hour
-        type: integer
-        description: "Hora del día (0-23). Útil para analizar picos de venta horarios."
       - name: payment_method
         type: text
         description: "Método de pago usado (Credit Card, PayPal, Cash, etc.)."
@@ -43,7 +28,7 @@ tables:
         type: numeric
         description: "Monto descontado en la venta."
 
-    # Métricas pre-calculadas (Atajos para la IA)
+    # Métricas pre-calculadas
     metrics:
       - name: total_sales
         sql: "SUM(total)"
@@ -59,8 +44,8 @@ tables:
         description: "Ticket promedio de venta."
 
   # --- DIMENSIONES ---
-  - name: dim_product
-    schema: curated
+  - name: products
+    schema: public
     description: "Catálogo de productos."
     columns:
       - name: product_id
@@ -75,26 +60,41 @@ tables:
         type: numeric
         description: "Precio unitario actual."
 
-  - name: dim_customer
-    schema: curated
+  - name: customers
+    schema: public
     description: "Información de clientes."
     columns:
       - name: customer_id
         type: integer
       - name: region
         type: text
-        description: "Región geográfica del cliente."
+        description: "Región geográfica o País del cliente."
       - name: email
         type: text
         description: "Correo electrónico del cliente (Dato Sensible)."
-      # Nota: first_name y last_name están disponibles si se necesitan
+      - name: first_name_customer
+        type: text
+        description: "Nombre del cliente."
+      - name: last_name_customer
+        type: text
+        description: "Apellido del cliente."
 
-  - name: dim_employee
-    schema: curated
+  - name: employees
+    schema: public
     description: "Información de empleados y vendedores."
     columns:
       - name: employee_id
         type: integer
+        description: "ID único del empleado."
+      - name: first_name
+        type: text
+        description: "Nombre del empleado."
+      - name: last_name
+        type: text
+        description: "Apellido del empleado."
+      - name: email
+        type: text
+        description: "Correo electrónico del empleado (Dato Sensible)."
       - name: department
         type: text
         description: "Departamento (Ventas, IT, etc.)."
@@ -106,22 +106,22 @@ tables:
         description: "Salario mensual (CONFIDENCIAL: Solo Admin)."
 
 # --- RELACIONES (JOINS) ---
-# Esto le enseña a la IA cómo unir las tablas sin equivocarse.
+# Para que la IA pueda entender cómo unir las tablas sin equivocarse.
 relationships:
-  - from_table: fact_sales
+  - from_table: sales
     from_column: product_id
-    to_table: dim_product
+    to_table: products
     to_column: product_id
     type: many_to_one
 
-  - from_table: fact_sales
+  - from_table: sales
     from_column: customer_id
-    to_table: dim_customer
+    to_table: customers
     to_column: customer_id
     type: many_to_one
 
-  - from_table: fact_sales
+  - from_table: sales
     from_column: employee_id
-    to_table: dim_employee
+    to_table: employees
     to_column: employee_id
     type: many_to_one
