@@ -39,7 +39,9 @@ def _try_rules_engine(request, start_time, background_tasks) -> Optional[QueryRe
     logger.info(f"   ⚡ [RULES] Regla encontrada: {rule_hit.get('viz_title')}")
 
     # Preparar datos candidatos
-    sql_candidate = rule_hit["sql"]
+    sql_raw = rule_hit["sql"] # borrar luego de testear
+    sql_candidate = f"/* ⚡ REGLA */ {sql_raw}" # borrar luego de testear
+    #sql_candidate = rule_hit["sql"]
     params_candidate = rule_hit.get("params", {}) # <--- Capturamos los params (:p1)
     viz_type_candidate = rule_hit["viz_type"]
     viz_title_candidate = rule_hit["viz_title"]

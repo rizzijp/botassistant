@@ -1,0 +1,51 @@
+question,status,engine,rows,time_sec,sql_snippet,viz_title
+Hola,OK,🤖 LLM,1,4.22,SELECT '¡Hola! Soy tu asistente de datos. Pregúnta...,N/A
+Buenos dias,OK,🤖 LLM,1,2.68,SELECT '¡Hola! Soy tu asistente de datos. Pregúnta...,N/A
+Que tal,OK,🤖 LLM,1,1.9,SELECT '¡Hola! Soy tu asistente de datos. Pregúnta...,N/A
+Salario de Javier Torres,OK,🤖 LLM,1,1.92,                 SELECT                      emplo...,N/A
+Cuanto gana Sofia Ruiz,OK,🤖 LLM,1,1.9,                 SELECT                      emplo...,N/A
+Puesto de Andrea Reyes,OK,🤖 LLM,1,1.96,                 SELECT                      emplo...,N/A
+Cargo de Diego Herrera,OK,🤖 LLM,1,1.93,                 SELECT                      emplo...,N/A
+Quien es Carlos Perez,OK,🤖 LLM,1,1.97,                 SELECT                      emplo...,N/A
+Datos de Lucia Castillo,OK,🤖 LLM,0,2.01,                 SELECT                      emplo...,N/A
+Top 5 salarios,OK,🤖 LLM,5,1.98,                 SELECT                      CONCA...,N/A
+Los 3 empleados con mayor sueldo,OK,🤖 LLM,3,1.92,                 SELECT                      CONCA...,N/A
+Cliente Roberto Rivas,OK,🤖 LLM,2,1.99,                 SELECT                      custo...,N/A
+Datos del cliente Marina Garcia,OK,🤖 LLM,0,1.93,                 SELECT                      emplo...,N/A
+Contacto de Luis Lopez,OK,🤖 LLM,2,1.9,                 SELECT                      custo...,N/A
+Buscar cliente Andrea Santos,OK,🤖 LLM,4,1.91,                 SELECT                      custo...,N/A
+Precio del Monitor Moderno,OK,🤖 LLM,1,1.96,"                 SELECT product_name, category, un...",N/A
+Cuanto cuesta el Smartphone Slim,OK,🤖 LLM,2,1.93,"                 SELECT product_name, category, un...",N/A
+Valor de la Silla Vintage,OK,🤖 LLM,0,1.97,"                 SELECT product_name, category, un...",N/A
+Precio de zapatillas,OK,🤖 LLM,10,2.01,"                 SELECT product_name, category, un...",N/A
+Cuanto cuesta el mouse,OK,🤖 LLM,7,2.32,"                 SELECT product_name, category, un...",N/A
+Ventas por canal,OK,🤖 LLM,3,2.51,"                 SELECT sales_channel, SUM(total) ...",N/A
+Ventas online,OK,🤖 LLM,3,2.45,"                 SELECT sales_channel, SUM(total) ...",N/A
+Ventas por metodo de pago,OK,🤖 LLM,4,2.47,"                 SELECT payment_method, SUM(total)...",N/A
+Como pagan mas los clientes,OK,🤖 LLM,4,2.31,"                 SELECT payment_method, SUM(total)...",N/A
+Ventas por categoria,OK,🤖 LLM,5,2.31,"                 SELECT p.category, SUM(f.total) a...",N/A
+Rendimiento por categoria,OK,🤖 LLM,5,2.4,"                 SELECT p.category, SUM(f.total) a...",N/A
+Ventas por region,OK,🤖 LLM,5,2.35,"                 SELECT c.region, SUM(f.total) as ...",N/A
+Ventas por zona,OK,🤖 LLM,5,2.5,"                 SELECT c.region, SUM(f.total) as ...",N/A
+Ventas totales,OK,🤖 LLM,0,2.35,                 SELECT                      p.pro...,N/A
+Cuanto vendimos en total,OK,🤖 LLM,1,1.96,SELECT SUM(total) as total_ventas FROM public.sale...,N/A
+Top 5 productos mas vendidos,OK,🤖 LLM,5,1.93,"                 SELECT p.product_name, SUM(f.quan...",N/A
+Cuales son los 10 productos que mas salen,OK,🤖 LLM,10,1.93,"                 SELECT p.product_name, SUM(f.quan...",N/A
+Top 5 productos,OK,🤖 LLM,5,1.93,"                 SELECT p.product_name, SUM(f.tota...",N/A
+Los 3 mejores productos,OK,🤖 LLM,3,1.92,"                 SELECT p.product_name, SUM(f.tota...",N/A
+Ventas 2024,OK,🤖 LLM,12,1.98,"                 SELECT TO_CHAR(sale_timestamp, 'Y...",N/A
+Ingresos 2023,OK,🤖 LLM,12,1.91,"                 SELECT TO_CHAR(sale_timestamp, 'Y...",N/A
+Ventas de monitores,OK,🤖 LLM,0,1.99,                 SELECT                      p.pro...,N/A
+Como va la zona Norte,OK,🤖 LLM,0,2.17,                 SELECT                      p.pro...,N/A
+Ingresos de laptops,OK,🤖 LLM,0,2.22,                 SELECT                      p.pro...,N/A
+Ventas de monitores en enero 2024,OK,🤖 LLM,12,2.45,"                 SELECT TO_CHAR(sale_timestamp, 'Y...",N/A
+Promedio de ventas por dia,OK,🤖 LLM,0,50.45,SELECT   FROM public.sales...,N/A
+Clientes de Mexico que compraron monitores,ERROR,ERROR,0,,,
+Empleados del departamento TI que ganan mas de 3000,ERROR,ERROR,0,,,
+Comparar ventas entre 2023 y 2024,ERROR,ERROR,0,,,
+Cual fue la venta mas alta registrada,ERROR,ERROR,0,,,
+Cuantos clientes unicos tenemos,ERROR,ERROR,0,,,
+Ticket promedio de venta online,OK,🤖 LLM,1,2.53,SELECT AVG(total) AS avg_ticket  FROM public.sales...,N/A
+Productos que nunca se han vendido,ERROR,ERROR,0,,,
+Ventas totales agrupadas por vendedor,OK,🤖 LLM,0,2.13,                 SELECT                      p.pro...,N/A
+Dame un resumen de las ventas de ayer,ERROR,ERROR,0,,,

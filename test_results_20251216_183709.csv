@@ -1,0 +1,109 @@
+question,status,time_sec,engine_estimated,rows_returned,viz_title,sql_generated
+Hola,OK,49.3343,🤖 LLM,1.0,N/A,SELECT '¡Hola! Soy tu asistente de datos. Pregúnta...
+Buenos dias,OK,2.6048,🤖 LLM,1.0,N/A,SELECT '¡Hola! Soy tu asistente de datos. Pregúnta...
+Que tal,OK,2.2563,🤖 LLM,1.0,N/A,SELECT '¡Hola! Soy tu asistente de datos. Pregúnta...
+Salario de Javier Torres,OK,2.1975,🤖 LLM,1.0,N/A,"
+                SELECT 
+                    emplo..."
+Cuanto gana Sofia Ruiz,OK,2.3715,🤖 LLM,1.0,N/A,"
+                SELECT 
+                    emplo..."
+Puesto de Andrea Reyes,OK,2.5141,🤖 LLM,1.0,N/A,"
+                SELECT 
+                    emplo..."
+Cargo de Diego Herrera,OK,2.2842,🤖 LLM,1.0,N/A,"
+                SELECT 
+                    emplo..."
+Quien es Carlos Perez,OK,2.7021,🤖 LLM,1.0,N/A,"
+                SELECT 
+                    emplo..."
+Datos de Lucia Castillo,OK,1.8976,🤖 LLM,0.0,N/A,"
+                SELECT 
+                    emplo..."
+Top 5 salarios,OK,1.887,🤖 LLM,5.0,N/A,"
+                SELECT 
+                    CONCA..."
+Los 3 empleados con mayor sueldo,OK,1.972,🤖 LLM,3.0,N/A,"
+                SELECT 
+                    CONCA..."
+Cliente Roberto Rivas,OK,1.8977,🤖 LLM,2.0,N/A,"
+                SELECT 
+                    custo..."
+Datos del cliente Marina Garcia,OK,1.9233,🤖 LLM,0.0,N/A,"
+                SELECT 
+                    emplo..."
+Contacto de Luis Lopez,OK,2.9439,🤖 LLM,2.0,N/A,"
+                SELECT 
+                    custo..."
+Buscar cliente Andrea Santos,OK,1.9303,🤖 LLM,4.0,N/A,"
+                SELECT 
+                    custo..."
+Precio del Monitor Moderno,OK,1.938,🤖 LLM,1.0,N/A,"
+                SELECT product_name, category, un..."
+Cuanto cuesta el Smartphone Slim,OK,1.9529,🤖 LLM,2.0,N/A,"
+                SELECT product_name, category, un..."
+Valor de la Silla Vintage,OK,1.9058,🤖 LLM,0.0,N/A,"
+                SELECT product_name, category, un..."
+Precio de zapatillas,OK,1.9186,🤖 LLM,10.0,N/A,"
+                SELECT product_name, category, un..."
+Cuanto cuesta el mouse,OK,1.911,🤖 LLM,7.0,N/A,"
+                SELECT product_name, category, un..."
+Ventas por canal,OK,1.9613,🤖 LLM,3.0,N/A,"
+                SELECT sales_channel, SUM(total) ..."
+Ventas online,OK,1.9642,🤖 LLM,3.0,N/A,"
+                SELECT sales_channel, SUM(total) ..."
+Ventas por metodo de pago,OK,1.984,🤖 LLM,4.0,N/A,"
+                SELECT payment_method, SUM(total)..."
+Como pagan mas los clientes,OK,1.9254,🤖 LLM,4.0,N/A,"
+                SELECT payment_method, SUM(total)..."
+Ventas por categoria,OK,1.9515,🤖 LLM,5.0,N/A,"
+                SELECT p.category, SUM(f.total) a..."
+Rendimiento por categoria,OK,2.2476,🤖 LLM,5.0,N/A,"
+                SELECT p.category, SUM(f.total) a..."
+Ventas por region,OK,2.1273,🤖 LLM,5.0,N/A,"
+                SELECT c.region, SUM(f.total) as ..."
+Ventas por zona,OK,1.9493,🤖 LLM,5.0,N/A,"
+                SELECT c.region, SUM(f.total) as ..."
+Ventas totales,OK,1.9157,🤖 LLM,0.0,N/A,"
+                SELECT 
+                    p.pro..."
+Cuanto vendimos en total,OK,1.9685,🤖 LLM,1.0,N/A,SELECT SUM(total) as total_ventas FROM public.sale...
+Top 5 productos mas vendidos,OK,1.9764,🤖 LLM,5.0,N/A,"
+                SELECT p.product_name, SUM(f.quan..."
+Cuales son los 10 productos que mas salen,OK,1.8907,🤖 LLM,10.0,N/A,"
+                SELECT p.product_name, SUM(f.quan..."
+Top 5 productos,OK,1.9193,🤖 LLM,5.0,N/A,"
+                SELECT p.product_name, SUM(f.tota..."
+Los 3 mejores productos,OK,1.9125,🤖 LLM,3.0,N/A,"
+                SELECT p.product_name, SUM(f.tota..."
+Ventas 2024,OK,1.9262,🤖 LLM,12.0,N/A,"
+                SELECT TO_CHAR(sale_timestamp, 'Y..."
+Ingresos 2023,OK,1.9233,🤖 LLM,12.0,N/A,"
+                SELECT TO_CHAR(sale_timestamp, 'Y..."
+Ventas de monitores,OK,1.8915,🤖 LLM,0.0,N/A,"
+                SELECT 
+                    p.pro..."
+Como va la zona Norte,OK,1.9357,🤖 LLM,0.0,N/A,"
+                SELECT 
+                    p.pro..."
+Ingresos de laptops,OK,1.9285,🤖 LLM,0.0,N/A,"
+                SELECT 
+                    p.pro..."
+Ventas de monitores en enero 2024,OK,1.9539,🤖 LLM,12.0,N/A,"
+                SELECT TO_CHAR(sale_timestamp, 'Y..."
+Promedio de ventas por dia,OK,2.9431,🤖 LLM,50.0,N/A,"SELECT sale_timestamp, AVG(total) AS avg_ticket 
+F..."
+Clientes de Mexico que compraron monitores,OK,2.5493,🤖 LLM,0.0,N/A,"SELECT customers.region, COUNT(sale_id) AS count_s..."
+Empleados del departamento TI que ganan mas de 3000,OK,2.661,🤖 LLM,50.0,N/A,"SELECT employees.first_name, employees.last_name, ..."
+Comparar ventas entre 2023 y 2024,OK,2.7083,🤖 LLM,2.0,N/A,"SELECT EXTRACT(YEAR FROM sale_timestamp), SUM(tota..."
+Cual fue la venta mas alta registrada,OK,2.2756,🤖 LLM,1.0,N/A,"SELECT total 
+FROM public.sales
+ORDER BY total DES..."
+Cuantos clientes unicos tenemos,ERROR,0.0,,,,
+Ticket promedio de venta online,OK,2.3566,🤖 LLM,1.0,N/A,"SELECT AVG(total) AS avg_ticket 
+FROM public.sales..."
+Productos que nunca se han vendido,ERROR,0.0,,,,
+Ventas totales agrupadas por vendedor,OK,1.9094,🤖 LLM,0.0,N/A,"
+                SELECT 
+                    p.pro..."
+Dame un resumen de las ventas de ayer,OK,2.8592,🤖 LLM,1.0,N/A,"SELECT SUM(total) AS total_sales, SUM(quantity) AS..."
