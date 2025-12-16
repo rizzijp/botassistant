@@ -22,7 +22,9 @@ for test in scenarios:
     try:
         response = requests.post(BASE_URL, json={
             "user_id": USER_ID,
-            "question": test['q']
+            "message": test['q'],
+            "session_id": "test_session_id",
+            "role": "admin"
         })
         
         duration = round(time.time() - start, 2)

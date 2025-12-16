@@ -14,7 +14,7 @@ def compile_sql(plan: QueryPlan) -> str:
     model = load_semantic_model()
     
     # 1. Identificar tabla de hechos
-    fact_table = next(t for t in model.tables if t.name == 'fact_sales')
+    fact_table = next(t for t in model.tables if t.name == 'sales')
     fact_columns = [c.name for c in fact_table.columns]
     
     # 2. Recopilar todas las columnas necesarias (Dimensiones + Filtros)

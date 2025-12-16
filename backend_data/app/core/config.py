@@ -3,6 +3,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Define modelos hardcodeados. 
+# Mejora: Debería usar pydantic-settings para validar variables de entorno y permitir cambiar modelos sin tocar código.
 # --- DICCIONARIO MAESTRO DE MODELOS ---
 # El formato debe ser SIEMPRE: "alias": "proveedor/nombre_tecnico"
 MAPA_MODELOS = {
