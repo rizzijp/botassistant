@@ -5,7 +5,7 @@ import sys
 # Ajuste para importar módulos hermanos
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
-from app.semantic.semantic_types import SemanticModel
+from app.semantic.models.schema import SemanticModel
 
 # --- Función de Carga ---
 

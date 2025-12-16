@@ -1,8 +1,8 @@
 import json
 from sqlalchemy import text
 from app.db.connection import engine
-# Importamos el tipo QueryPlan para type hinting (opcional pero profesional)
-from app.semantic.semantic_types import QueryPlan
+# Importamos el tipo QueryPlan para type hinting
+from app.semantic.models.query_plan import QueryPlan
 
 def save_audit_log(
     user_id: int,

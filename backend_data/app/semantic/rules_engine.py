@@ -101,6 +101,15 @@ def check_rules(question: str) -> Optional[Dict[str, Any]]:
             if match:
                 template = rule["response_template"]
                 result = template.copy()
+
+                result["sql"] = result["sql"].format(
+                    TABLE_SALES=TABLE_SALES,
+                    TABLE_PROD=TABLE_PROD,
+                    TABLE_CUST=TABLE_CUST,
+                    TABLE_EMP=TABLE_EMP,
+                    COL_DATE=COL_DATE
+                )
+
                 result["params"] = {} 
 
                 if match.groups() and "params_mapper" in rule:

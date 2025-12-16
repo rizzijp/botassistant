@@ -9,7 +9,7 @@ from app.core.audit_log import save_audit_log
 from app.api.models.api_models import QueryRequest
 from app.api.models.api_models import QueryResponse
 
-def _build_response(request, df, sql, viz_type, elapsed, message, tiene_grafica_bool, viz_title=None, grafica_base64=None):
+def _build_response(request, df, sql, viz_type, elapsed, message, tiene_grafica, viz_title=None, grafica_base64=None):
     """Build standardized QueryResponse."""
     if not message:
         message = _generate_success_message_static(df, viz_type, viz_title)
@@ -23,7 +23,7 @@ def _build_response(request, df, sql, viz_type, elapsed, message, tiene_grafica_
         columnas=list(df.columns),
         total_filas=len(df),
         tipo_grafica=viz_type,
-        tiene_grafica=tiene_grafica_bool,
+        tiene_grafica=tiene_grafica,
         grafica_base64=grafica_base64
     )
 
@@ -71,10 +71,11 @@ def _generate_ai_summary(question: str, df: pd.DataFrame, model: str) -> str:
     INSTRUCCIONES:
     1. Recibirás la pregunta del usuario y una tabla de datos con la respuesta.
     2. Redacta una respuesta directa y conversacional (ej: "Los empleados con más ventas son...").
-    3. Menciona los valores clave o los primeros resultados si es un ranking.
+    3. Menciona los valores clave o los primeros resultados si es un ranking(top 3 como máximo).
     4. Si hay muchos datos, resume la tendencia general.
-    5. NO menciones términos técnicos como "SQL", "query" o "dataframe".
-    6. Sé breve y profesional.
+    5. NO repitas información - di cada cosa UNA SOLA VEZ.
+    6. NO menciones términos técnicos como "SQL", "query" o "dataframe".
+    7. Sé breve y profesional.
     """
 
     user_prompt = f"""
@@ -92,7 +93,7 @@ def _generate_ai_summary(question: str, df: pd.DataFrame, model: str) -> str:
         # Limpieza básica por si el LLM pone comillas
         return summary.strip().strip('"')
     except Exception as e:
-        print(f"⚠️ Falló el resumen IA: {e}")
+        logger.warning(f"Fallo resumen IA: {e}")
         # Fallback si el LLM de resumen falla
         return f"Aquí tienes los {row_count} resultados encontrados para tu consulta."
 

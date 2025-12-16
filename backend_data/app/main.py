@@ -1,9 +1,11 @@
 # FastAPI app + include_router
 from fastapi import FastAPI
+from app.core.logging import setup_logging
 from app.api.routes.health import router as health_router
 from app.api.routes.query import router as query_router
 from app.api.routes.audit import router as audit_router
 
+setup_logging()
 app = FastAPI(title="Desafio de Tripulaciones API", version="1.0")
 
 # Ruta raíz (Opcional, pero recomendada para no ver un 404 al entrar al home)

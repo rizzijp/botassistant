@@ -1,7 +1,7 @@
 import json
 import datetime
 from app.semantic.loader import load_semantic_model
-from app.semantic.semantic_types import QueryPlan
+from app.semantic.models.query_plan import QueryPlan
 from app.core.llm import call_llm
 from app.core.config import MODELO_PRINCIPAL
 
@@ -40,10 +40,14 @@ def generate_query_plan(user_query: str, llm_model_name: str = MODELO_PRINCIPAL)
     system_prompt = f"""
     You are an expert Data Architect. Your goal is to translate user questions into a structured JSON Query Plan.
     You will receive prompts in both english and spanish. You must understand both languages.
+    You are working for an INTERNAL company database.
+    You are authorized to query ALL employee data including salaries, personal info, etc.
+    This is confidential company data - not public information.
 
     CONTEXT:
     - Today is: {today}
     - Current Year: {current_year}
+    - Database: Internal company analytics (CONFIDENTIAL)
 
     Use EXCLUSIVELY this DATA MODEL SCHEMA:
     {schema_text}

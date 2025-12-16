@@ -16,9 +16,15 @@ from app.core.config import MODELO_PRINCIPAL
 from app.core.llm import call_llm
 from app.semantic.models.query_plan import VizType
 from app.semantic.rules_engine import check_rules
-from app.api.routes.utils import _execute_sql_safe, _generate_success_message_static, _generate_ai_summary, _determine_has_graph, _log_audit
 import logging
-from app.api.services.response_builder import _build_response
+from app.api.services.sql_executor import _execute_sql_safe  
+from app.api.services.response_builder import (
+    _build_response,
+    _generate_success_message_static,
+    _generate_ai_summary,
+    _determine_has_graph,
+    _log_audit
+)
 
 
 router = APIRouter()
@@ -82,7 +88,7 @@ def _try_llm_engine(request, start_time) -> QueryResponse:
 
     # CAPTURA DEL ESTADO: Si falla en el paso B o C, sabremos el tipo de gráfico.
     viz_type_to_log = query_plan.viz_type
-    viz_title_response = query_plan.viz_title or request.question
+    viz_title_response = query_plan.viz_title or request.message
 
     # PASO B: Compilar a SQL (Lógica Determinista)
     # --------------------------------------------
@@ -157,7 +163,7 @@ def _handle_query_error(e, request, start_time):
         client_message = "Lo siento, hubo un error inesperado al procesar tu consulta."
 
     # Intentamos rescatar qué SQL falló (Reglas o LLM) para mostrarlo si es necesario
-    sql_failed = generated_sql if generated_sql else sql_candidate
+    #sql_failed = generated_sql if generated_sql else sql_candidate
 
     # 3. RESPUESTA AL CLIENTE
     return JSONResponse(
@@ -166,7 +172,7 @@ def _handle_query_error(e, request, start_time):
             "exito": False,
             "session_id": request.session_id,
             "mensaje": client_message,
-            "sql_generado": sql_failed,
+            "sql_generado": None,
             "datos": [],
             "columnas": [],
             "total_filas": 0,
