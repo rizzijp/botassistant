@@ -8,6 +8,8 @@ from app.core.llm import call_llm
 from app.core.audit_log import save_audit_log
 from app.api.models.api_models import QueryRequest
 from app.api.models.api_models import QueryResponse
+import logging
+logger = logging.getLogger(__name__)
 
 def _build_response(request, df, sql, viz_type, elapsed, message, tiene_grafica, viz_title=None, grafica_base64=None):
     """Build standardized QueryResponse."""
@@ -113,17 +115,19 @@ def _determine_has_graph(viz_type: str, row_count: int) -> bool:
     
     return False
 
-def _log_audit(bg_tasks: BackgroundTasks, req: QueryRequest, sql: str, plan: dict, rows: int, time_taken: float, viz: str, error: str = None):
-    """Helper para limpiar el código principal de la llamada larguísima a logs."""
+
+def _log_audit(bg_tasks: BackgroundTasks, req: QueryRequest, sql: str, model_used: str, rows: int, time_taken: float, viz: str, error: str = None, tiene_grafica: bool = False):
+    
     bg_tasks.add_task(
         save_audit_log,
         user_id=req.user_id,
-        question=req.question,
-        model=plan.get("source", req.model), # Si viene de reglas usa "rules_engine", sino el modelo
-        query_plan=plan,
-        sql=sql,
-        time_taken=time_taken,
-        rows=rows,
-        error=error,
-        viz_type=viz
+        session_id=req.session_id,
+        mensaje=req.message,
+        model_used=model_used,
+        sql_generado=sql,
+        execution_time_sec=time_taken,
+        total_filas=rows,
+        error_message=error,
+        tipo_grafica=viz,
+        tiene_grafica=tiene_grafica
     )

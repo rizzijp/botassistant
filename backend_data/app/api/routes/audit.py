@@ -13,7 +13,11 @@ def get_recent_logs(limit: int = 10):
     """
     try:
         query = text("""
-            SELECT log_id, timestamp, user_id, question, model_used, query_plan, sql_generated, status, row_count, execution_time_sec, error_message
+            SELECT 
+                log_id, timestamp, user_id, session_id,
+                exito, mensaje, model_used, 
+                sql_generado, execution_time_sec, total_filas, 
+                error_message, tipo_grafica, tiene_grafica
             FROM audit.logs
             ORDER BY timestamp DESC
             LIMIT :limit

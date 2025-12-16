@@ -30,7 +30,7 @@ from app.api.services.response_builder import (
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-def _try_rules_engine(request, start_time) -> Optional[QueryResponse]:
+def _try_rules_engine(request, start_time, background_tasks) -> Optional[QueryResponse]:
     """Attempt fast path via rules engine."""
     rule_hit = check_rules(request.message)
     if not rule_hit:
@@ -55,14 +55,18 @@ def _try_rules_engine(request, start_time) -> Optional[QueryResponse]:
     # MENSAJE ESTÁTICO (Rules = Velocidad)
     mensaje_final = _generate_success_message_static(df, viz_type_candidate, viz_title_candidate)
     tiene_grafica_bool = _determine_has_graph(viz_type_candidate, row_count)
-    
-    query_plan_dict = {
-                "source": "rules_engine", 
-                "match": "regex",
-                "params": str(params_candidate)
-            }
-    
-    #_log_audit(background_tasks, request, sql_candidate, query_plan_dict, row_count, elapsed, viz_type_candidate)
+
+    _log_audit(
+        bg_tasks=background_tasks,
+        req=request,
+        sql=sql_candidate,
+        model_used="rules_engine",
+        rows=row_count,
+        time_taken=elapsed,
+        viz=viz_type_candidate,
+        error=None,
+        tiene_grafica=tiene_grafica_bool
+    )
     
     # RETORNO ANTICIPADO: Si esto funciona, NO ejecuta el LLM.
     return _build_response(
@@ -77,14 +81,14 @@ def _try_rules_engine(request, start_time) -> Optional[QueryResponse]:
         grafica_base64=None
     )
 
-def _try_llm_engine(request, start_time) -> QueryResponse:
+def _try_llm_engine(request, start_time, background_tasks) -> QueryResponse:
     """Fallback to LLM query planning."""
     model_to_use = request.model or MODELO_PRINCIPAL
     logger.info(f"   🤖 [LLM START] Generando plan con LLM {model_to_use}")
 
     # PASO A: Generar el Plan
     query_plan = generate_query_plan(request.message, llm_model_name=model_to_use)
-    query_plan_dict = query_plan.model_dump() # <--- Guardamos el JSON
+    #query_plan_dict = query_plan.model_dump() # <--- Guardamos el JSON
 
     # CAPTURA DEL ESTADO: Si falla en el paso B o C, sabremos el tipo de gráfico.
     viz_type_to_log = query_plan.viz_type
@@ -110,7 +114,17 @@ def _try_llm_engine(request, start_time) -> QueryResponse:
             
 
     # PASO D: Auditoría EXITO (En segundo plano)
-    #_log_audit(background_tasks, request, generated_sql, query_plan_dict, row_count, elapsed, viz_type_to_log)
+    _log_audit(
+        bg_tasks=background_tasks,
+        req=request,
+        sql=generated_sql,
+        model_used=model_to_use,
+        rows=row_count,
+        time_taken=elapsed,
+        viz=viz_type_to_log,
+        error=None,
+        tiene_grafica=tiene_grafica_bool
+    )
     
     # PASO E: Respuesta al Cliente
     return _build_response(
@@ -125,7 +139,7 @@ def _try_llm_engine(request, start_time) -> QueryResponse:
         grafica_base64=None
     )
 
-def _handle_query_error(e, request, start_time):
+def _handle_query_error(e, request, start_time, background_tasks, sql=None, model_used=None, viz=None):
     """Centralized error handling."""
     # --- BLOQUE DE MANEJO DE ERRORES Y SEGURIDAD ---
     # Cálculo del tiempo hasta el fallo
@@ -137,10 +151,23 @@ def _handle_query_error(e, request, start_time):
 
     # PASO F: Auditoría ERROR (En segundo plano)
     # Guardamos qué intentó preguntar y por qué falló
-    #try:
-    #    _log_audit(background_tasks, request, generated_sql, query_plan_dict, 0, elapsed, viz_type_to_log or "error", str(e))
-    #except:
-    #    logger.error("   ❌ Falló el log de error crítico.")
+    # Si no sabemos qué modelo falló, usamos el que pidió el request por defecto
+    modelo_final = model_used or request.model
+
+    try:
+        _log_audit(
+            bg_tasks=background_tasks,
+            req=request,
+            sql=sql,
+            model_used=modelo_final,
+            rows=0,
+            time_taken=elapsed,
+            viz=viz or "error",
+            error=str(e),
+            tiene_grafica=False
+        )
+    except Exception as log_err:
+        logger.error(f"   ❌ Falló el log de error crítico: {log_err}")
 
 
     # 1. DETECCIÓN DE ATAQUE
@@ -225,13 +252,17 @@ async def ask_database(request: QueryRequest, background_tasks: BackgroundTasks)
     
     try:
         # INTENTO 1: MOTOR DE REGLAS (Fast Path & Safe Execution) ⚡
-        response = _try_rules_engine(request, start_time)
+        response = _try_rules_engine(request, start_time, background_tasks)
         if response:
             return response
       
         
         # INTENTO 2: LLM (Fallback / Slow Path) 🤖
-        return _try_llm_engine(request, start_time)
+        return _try_llm_engine(request, start_time, background_tasks)
 
     except Exception as e:
-        return _handle_query_error(e, request, start_time)
+        return _handle_query_error(
+            e, request, start_time, background_tasks,
+            sql=generated_sql,
+            model_used=request.model,
+            viz=viz_type_to_log)
