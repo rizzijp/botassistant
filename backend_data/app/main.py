@@ -12,7 +12,10 @@ app = FastAPI(title="Desafio de Tripulaciones API", version="1.0")
 # CONFIGURACIÓN DE CORS (PARA EL FRONTEND)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # o ["*"] para pruebas
+    allow_origins=[
+        "http://localhost:5173",
+        "https://globo-market.onrender.com"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

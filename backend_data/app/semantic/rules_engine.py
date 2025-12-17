@@ -295,14 +295,13 @@ RULES_CATALOG = [
     },
 
     # -------------------------------------------------------------------------
-    # 9. BÚSQUEDA GENÉRICA (Fallback inteligente)
+    # 9. BÚSQUEDA GENÉRICA (Anti-Fechas)
     # -------------------------------------------------------------------------
-    # AL FINAL DE TODO para no "robar" consultas
     {
         "patterns": [
-            r"^ventas (?:en |de |del )?(.+)$", 
-            r"^ingresos (?:en |de |del )?(.+)$",
-            r"^como va (?:la zona |la region |el producto )?(.+)$"
+            r"^ventas (?:en |de |del )?((?:(?!\b20\d{2}\b).)+)$", 
+            r"^ingresos (?:en |de |del )?((?:(?!\b20\d{2}\b).)+)$",
+            r"^como va (?:la zona |la region |el producto )?((?:(?!\b20\d{2}\b).)+)$"
         ],
         "response_template": {
             "sql": """
