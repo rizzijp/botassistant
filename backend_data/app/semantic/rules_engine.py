@@ -24,11 +24,14 @@ RULES_CATALOG = [
     # -------------------------------------------------------------------------
     # 1. SALUDOS
     # -------------------------------------------------------------------------
-    {
+   {
         "patterns": [r"^hola$", r"^buenos dias$", r"^buenas tardes$", r"^que tal$"],
         "response_template": {
-            "sql": "SELECT '¡Hola! Soy tu asistente de datos. Pregúntame sobre ventas, empleados, clientes o productos.' as mensaje",
-            "viz_type": "number",
+            # Ponemos SQL en None para indicar que NO debe ejecutar nada
+            "sql": None, 
+            # Este es el mensaje directo que quieres devolver
+            "static_message": "¡Hola! Soy tu asistente de datos. Pregúntame sobre ventas, empleados, clientes o productos.",
+            "viz_type": "text",
             "viz_title": "Saludo"
         }
     },

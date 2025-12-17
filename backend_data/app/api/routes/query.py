@@ -32,12 +32,58 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 def _try_rules_engine(request, start_time, background_tasks) -> Optional[QueryResponse]:
-    """Attempt fast path via rules engine."""
+    """
+    Intenta resolver la duda usando reglas predefinidas.
+    Maneja dos caminos: 
+    A) Respuesta Estática (Saludo) -> Sin SQL, Sin Datos.
+    B) Respuesta de Datos (Ventas) -> Con SQL, Con Datos y Agente interpretador.
+    """
     rule_hit = check_rules(request.message)
     if not rule_hit:
         return None
     
     logger.info(f"   ⚡ [RULES] Regla encontrada: {rule_hit.get('viz_title')}")
+
+    # =========================================================================
+    # CAMINO A: RESPUESTA ESTÁTICA
+    # =========================================================================
+    static_msg = rule_hit.get("static_message")
+    
+    if static_msg:
+        elapsed = round(time.time() - start_time, 4)
+        logger.info(f"   ✅ [CHAT MODE] Respondiendo saludo/ayuda.")
+
+        # Auditoría limpia (sin error)
+        _log_audit(
+            bg_tasks=background_tasks,
+            req=request,
+            sql=None, # No guardamos SQL basura
+            model_used="rules_engine",
+            rows=0,
+            time_taken=elapsed,
+            viz="text",
+            error=None,
+            tiene_grafica=False
+        )
+
+        # RETORNO LIMPIO (Lo que pediste)
+        return _build_response(
+            request=request,
+            df=pd.DataFrame(),  # -> Se convierte en "datos": []
+            sql=None,           # -> Se convierte en "sql_generado": null
+            viz_type="text",
+            elapsed=elapsed,
+            message=static_msg, # -> "¡Hola! Soy tu asistente..." (Sin prefijos)
+            tiene_grafica=False,
+            viz_title=None,
+            grafica_base64=None,
+            motor="rules"
+        )
+
+    # =========================================================================
+    # CAMINO B: RESPUESTA ANALÍTICA (Tu Caso 2 - El resto)
+    # =========================================================================
+    # Aquí SÍ actúa el agente de datos, ejecuta SQL y devuelve filas.
 
     # Preparar datos candidatos
     sql_raw = rule_hit["sql"] # borrar luego de testear
