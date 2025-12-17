@@ -292,37 +292,6 @@ RULES_CATALOG = [
             "viz_title": "Evolución Ventas {captured}"
         },
         "params_mapper": lambda captured: int(captured)
-    },
-
-    # -------------------------------------------------------------------------
-    # 9. BÚSQUEDA GENÉRICA (Anti-Fechas)
-    # -------------------------------------------------------------------------
-    {
-        "patterns": [
-            r"^ventas (?:en |de |del )?((?:(?!\b20\d{2}\b).)+)$", 
-            r"^ingresos (?:en |de |del )?((?:(?!\b20\d{2}\b).)+)$",
-            r"^como va (?:la zona |la region |el producto )?((?:(?!\b20\d{2}\b).)+)$"
-        ],
-        "response_template": {
-            "sql": """
-                SELECT 
-                    p.product_name, 
-                    c.region,
-                    SUM(f.total) as ventas
-                FROM {TABLE_SALES} f
-                JOIN {TABLE_PROD} p ON f.product_id = p.product_id
-                JOIN {TABLE_CUST} c ON f.customer_id = c.customer_id
-                WHERE unaccent(p.product_name) ILIKE unaccent(%(p1)s) 
-                   OR unaccent(p.category) ILIKE unaccent(%(p1)s) 
-                   OR unaccent(c.region) ILIKE unaccent(%(p1)s)
-                GROUP BY p.product_name, c.region
-                ORDER BY ventas DESC
-                LIMIT 20
-            """,
-            "viz_type": "table",
-            "viz_title": "Resultados de búsqueda para '{captured}'"
-        },
-        "params_mapper": lambda captured: f"%{captured}%"
     }
 ]
 
