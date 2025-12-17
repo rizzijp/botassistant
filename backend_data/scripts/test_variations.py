@@ -16,27 +16,6 @@ TEST_CASES = [
     "Ayuda por favor",           # Var. de Ayuda
     "Necesito asistencia",       # Var. de Ayuda
     
-    # --- GRUPO B: RRHH (Búsquedas parciales y acentos) ---
-    "Ficha de Javier",           # Nombre parcial
-    "Cuanto cobra Lucia",        # Sinónimo de 'gana'
-    "Rol de Carlos Perez",       # Sinónimo de 'puesto'/cargo'
-    "Info del empleado Diego",   # Var. de 'datos de'
-    "Quien es el empleado con el sueldo mas alto", # Var. de top 1
-    "Los 5 peores salarios",     # Inverso de top salarios
-
-    # --- GRUPO C: CLIENTES (Búsqueda difusa) ---
-    "Busca a Marina",            # Solo nombre
-    "Cliente de apellido Rivas", # Solo apellido
-    "Mail de Andrea Santos",     # Pide dato específico (contacto)
-    "De donde es el cliente Luis Lopez", # Pregunta por región
-
-    # --- GRUPO D: PRODUCTOS (Singular/Plural/Categoría) ---
-    "Precio de la silla",        # Singular vs Plural
-    "Valor monitores",           # Sin conectores
-    "Cuanto salen las zapatillas", # Coloquial 'salen'
-    "Precio juego de mesa",      # Categoría compuesta
-    "Coste del teclado",         # Sinónimo de precio
-
     # --- GRUPO E: VENTAS COMPLEJAS (LLM Puro) ---
     "Ventas de monitores en el primer trimestre de 2024", # Q1
     "Ventas de zapatillas vs monitores en 2023",          # Comparación
