@@ -4,7 +4,8 @@ from typing import Optional, Dict, Any
 
 def normalize_text(text: str) -> str:
     """
-    Normaliza el texto eliminando tildes y convirtiendo a minúsculas.
+    Normaliza el texto eliminando tildes y convirtiendo a minúsculas
+    para facilitar el matcheo de Regex.
     """
     text = text.lower().strip()
     text = ''.join(c for c in unicodedata.normalize('NFD', text) if unicodedata.category(c) != 'Mn')
@@ -18,8 +19,6 @@ TABLE_EMP   = "public.employees"
 COL_DATE    = "sale_timestamp"
 
 # --- CATÁLOGO DE REGLAS ---
-# IMPORTANTE: El orden es vital. Las reglas específicas PRIMERO, las genéricas AL FINAL.
-
 RULES_CATALOG = [
     # -------------------------------------------------------------------------
     # 1. SALUDOS
@@ -34,28 +33,16 @@ RULES_CATALOG = [
     },
 
     # -------------------------------------------------------------------------
-    # 2. TOTALES GENERALES (¡MOVIDO AQUÍ PARA PRIORIDAD!)
+    # 2. RECURSOS HUMANOS (Empleados)
     # -------------------------------------------------------------------------
-    {
-        "patterns": [r"^ventas? totales?$", r"^cuanto vendimos (?:en total)?$"],
-        "response_template": {
-            "sql": "SELECT SUM(total) as total_ventas FROM {TABLE_SALES}",
-            "viz_type": "number",
-            "viz_title": "Ingresos Totales Históricos"
-        }
-    },
-
-    # -------------------------------------------------------------------------
-    # 3. RECURSOS HUMANOS
-    # -------------------------------------------------------------------------
+    # Ficha del empleado
     {
         "patterns": [
             r"^salario (?:de |del )?(.+)$",
             r"^cuanto gana (?:el empleado |la empleada )?(.+)$",
-            r"^cuanto cobra (?:el empleado |la empleada )?(.+)$",
             r"^puesto (?:de |del )?(.+)$",
             r"^cargo (?:de |del )?(.+)$",
-            r"^datos (?:de |del |del empleado )?(.+)$",
+            r"^datos (?:del empleado )?(.+)$",
             r"^quien es (?:el empleado )?(.+)$"
         ],
         "response_template": {
@@ -77,6 +64,7 @@ RULES_CATALOG = [
         },
         "params_mapper": lambda captured: f"%{captured}%"
     },
+    # Top Salarios
     {
         "patterns": [
             r"^top (\d+) (?:de )?salarios?$",
@@ -101,7 +89,7 @@ RULES_CATALOG = [
     },
 
     # -------------------------------------------------------------------------
-    # 4. CLIENTES
+    # 3. CLIENTES
     # -------------------------------------------------------------------------
     {
         "patterns": [
@@ -130,7 +118,7 @@ RULES_CATALOG = [
     },
 
     # -------------------------------------------------------------------------
-    # 5. CATÁLOGO Y PRECIOS
+    # 4. CATÁLOGO Y PRECIOS
     # -------------------------------------------------------------------------
     {
         "patterns": [
@@ -154,8 +142,9 @@ RULES_CATALOG = [
     },
 
     # -------------------------------------------------------------------------
-    # 6. ANÁLISIS DE VENTAS (KPIs)
+    # 5. ANÁLISIS DE VENTAS (KPIs)
     # -------------------------------------------------------------------------
+    # Ventas por Canal
     {
         "patterns": [
             r"^ventas? por canal(?:es)?$",
@@ -173,6 +162,7 @@ RULES_CATALOG = [
             "viz_title": "Ventas por Canal"
         }
     },
+    # Ventas por Método de Pago
     {
         "patterns": [
             r"^ventas? por (?:metodo|forma) de pago$",
@@ -189,6 +179,7 @@ RULES_CATALOG = [
             "viz_title": "Ventas por Método de Pago"
         }
     },
+    # Ventas por Categoría
     {
         "patterns": [
             r"^ventas? por categor[ií]a$",
@@ -206,6 +197,7 @@ RULES_CATALOG = [
             "viz_title": "Ventas por Categoría"
         }
     },
+    # Ventas por Región
     {
         "patterns": [
             r"^ventas? por regi[oó]n$",
@@ -225,9 +217,9 @@ RULES_CATALOG = [
     },
 
     # -------------------------------------------------------------------------
-    # 7. RANKINGS
+    # 6. RANKINGS DE PRODUCTOS
     # -------------------------------------------------------------------------
-    # Top Unidades (Cantidad)
+    # Top Unidades (Cantidad - Más específico, va primero)
     {
         "patterns": [
             r"^top (\d+) productos? (?:mas|más) vendidos?$",
@@ -247,7 +239,7 @@ RULES_CATALOG = [
         },
         "params_mapper": lambda captured: int(captured)
     },
-    # Top Ingresos (Dinero)
+    # Top Ingresos (Dinero - Más genérico)
     {
         "patterns": [
             r"^top (\d+) (?:de )?productos?$",
@@ -269,9 +261,8 @@ RULES_CATALOG = [
     },
 
     # -------------------------------------------------------------------------
-    # 8. ANÁLISIS TEMPORAL (Fechas)
+    # 7. ANÁLISIS TEMPORAL (Corregido para no comerse filtros complejos)
     # -------------------------------------------------------------------------
-    # Ajustado para NO atrapar cosas como "ventas de monitores en enero 2024"
     {
         "patterns": [
             r"^ventas? (?:del |en |del a[ñn]o |en el )?(\d{4})$", 
@@ -292,9 +283,8 @@ RULES_CATALOG = [
     },
 
     # -------------------------------------------------------------------------
-    # 9. BÚSQUEDA GENÉRICA (Fallback inteligente)
+    # 8. BÚSQUEDA GENÉRICA (Fallback inteligente)
     # -------------------------------------------------------------------------
-    # AL FINAL DE TODO para no "robar" consultas
     {
         "patterns": [
             r"^ventas (?:en |de |del )?(.+)$", 
@@ -321,6 +311,18 @@ RULES_CATALOG = [
             "viz_title": "Resultados de búsqueda para '{captured}'"
         },
         "params_mapper": lambda captured: f"%{captured}%"
+    },
+    
+    # -------------------------------------------------------------------------
+    # 9. TOTAL GENERAL (Comodín final)
+    # -------------------------------------------------------------------------
+    {
+        "patterns": [r"^ventas? totales?$", r"^cuanto vendimos (?:en total)?$"],
+        "response_template": {
+            "sql": "SELECT SUM(total) as total_ventas FROM {TABLE_SALES}",
+            "viz_type": "number",
+            "viz_title": "Ingresos Totales Históricos"
+        }
     }
 ]
 
@@ -334,6 +336,7 @@ def check_rules(question: str) -> Optional[Dict[str, Any]]:
                 template = rule["response_template"]
                 result = template.copy()
 
+                # Inyectamos nombres de tablas
                 result["sql"] = result["sql"].format(
                     TABLE_SALES=TABLE_SALES,
                     TABLE_PROD=TABLE_PROD,
@@ -344,12 +347,15 @@ def check_rules(question: str) -> Optional[Dict[str, Any]]:
 
                 result["params"] = {} 
 
+                # Si la regla captura un parámetro (ej: el año o el nombre)
                 if match.groups() and "params_mapper" in rule:
                     try:
                         captured_text = match.group(1)
+                        # Inyectamos el texto capturado en el título del gráfico
                         if "{captured}" in result["viz_title"]:
                             result["viz_title"] = result["viz_title"].format(captured=captured_text.title())
                         
+                        # Convertimos el parámetro (int, string con %, etc.)
                         param_value = rule["params_mapper"](captured_text)
                         result["params"] = {"p1": param_value}
                     except ValueError:

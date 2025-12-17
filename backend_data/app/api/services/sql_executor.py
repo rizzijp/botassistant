@@ -15,10 +15,13 @@ def _validate_security_patterns(sql: str, params: dict = None):
     1. Estructural: Revisa que sea SELECT y sin inyecciones múltiples.
     2. Contenido: Revisa los parámetros inyectados buscando patrones maliciosos.
     """
-    sql_clean = sql.strip().upper()
+    # --- FIX: Limpiar comentarios /* ... */ antes de validar ---
+    # Usamos re.DOTALL para que elimine comentarios multilínea si los hubiera
+    sql_clean = re.sub(r"/\*.*?\*/", "", sql, flags=re.DOTALL).strip().upper()
     
     # 1. Regla de Oro: Solo Lectura
-    if not sql_clean.startswith("SELECT"):
+    # Ahora sí funcionará porque sql_clean empezará con SELECT
+    if not sql_clean.startswith("SELECT") and not sql_clean.startswith("WITH"):
         raise HTTPException(status_code=400, detail="SECURITY_VIOLATION: Solo se permiten consultas SELECT.")
 
     # 2. Regla de Estructura: Inyección múltiple en el SQL crudo
