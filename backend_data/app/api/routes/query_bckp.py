@@ -31,17 +31,62 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 def _try_rules_engine(request, start_time, background_tasks) -> Optional[QueryResponse]:
-    """Attempt fast path via rules engine."""
+    """
+    Intenta resolver la duda usando reglas predefinidas.
+    Maneja dos caminos: 
+    A) Respuesta Estática (Saludo) -> Sin SQL, Sin Datos.
+    B) Respuesta de Datos (Ventas) -> Con SQL, Con Datos y Agente interpretador.
+    """
     rule_hit = check_rules(request.message)
     if not rule_hit:
         return None
     
     logger.info(f"   ⚡ [RULES] Regla encontrada: {rule_hit.get('viz_title')}")
 
+    # =========================================================================
+    # CAMINO A: RESPUESTA ESTÁTICA
+    # =========================================================================
+    static_msg = rule_hit.get("static_message")
+    
+    if static_msg:
+        elapsed = round(time.time() - start_time, 4)
+        logger.info(f"   ✅ [CHAT MODE] Respondiendo saludo/ayuda.")
+
+        # Auditoría limpia (sin error)
+        _log_audit(
+            bg_tasks=background_tasks,
+            req=request,
+            sql=None, # No guardamos SQL basura
+            model_used="rules_engine",
+            rows=0,
+            time_taken=elapsed,
+            viz="text",
+            error=None,
+            tiene_grafica=False
+        )
+
+        # RETORNO LIMPIO
+        return _build_response(
+            request=request,
+            df=pd.DataFrame(),  # -> Se convierte en "datos": []
+            sql=None,           # -> Se convierte en "sql_generado": null
+            viz_type="text",
+            elapsed=elapsed,
+            message=static_msg, # -> "¡Hola! Soy tu asistente..." (Sin prefijos)
+            tiene_grafica=False,
+            viz_title=None,
+            grafica_base64=None
+        )
+
+    # =========================================================================
+    # CAMINO B: RESPUESTA ANALÍTICA (Tu Caso 2 - El resto)
+    # =========================================================================
+    # Aquí SÍ actúa el agente de datos, ejecuta SQL y devuelve filas.
+
     # Preparar datos candidatos
     sql_raw = rule_hit["sql"] # borrar luego de testear
     sql_candidate = f"/* ⚡ REGLA */ {sql_raw}" # borrar luego de testear
-    #sql_candidate = rule_hit["sql"]
+    #sql_candidate = rule_hit["sql"] # activar luego de testear
     params_candidate = rule_hit.get("params", {}) # <--- Capturamos los params (:p1)
     viz_type_candidate = rule_hit["viz_type"]
     viz_title_candidate = rule_hit["viz_title"]
@@ -92,6 +137,36 @@ def _try_llm_engine(request, start_time, background_tasks) -> QueryResponse:
     query_plan = generate_query_plan(request.message, llm_model_name=model_to_use)
     #query_plan_dict = query_plan.model_dump() # <--- Guardamos el JSON
 
+    # FILTRO ANTI-CHITCHAT
+    # Si el LLM no encontró métricas ni dimensiones, es una charla casual.
+    if not query_plan.metrics and not query_plan.dimensions and not query_plan.filters:
+        logger.info("   ⚠️ [LLM] Plan vacío detectado. Respondiendo como chitchat.")
+        elapsed = round(time.time() - start_time, 4)
+        
+        fallback_msg = "Soy un asistente especializado en datos de la empresa (Ventas, Empleados, Productos). Por favor, hazme una pregunta sobre esos temas."
+        
+        _log_audit(
+            bg_tasks=background_tasks,
+            req=request,
+            sql=None,
+            model_used=model_to_use,
+            rows=0,
+            time_taken=elapsed,
+            viz="text",
+            error=None,
+            tiene_grafica=False
+        )
+        
+        return _build_response(
+            request=request,
+            df=pd.DataFrame(),
+            sql=None,
+            viz_type="text",
+            elapsed=elapsed,
+            message=fallback_msg,
+            tiene_grafica=False
+        )
+
     # CAPTURA DEL ESTADO: Si falla en el paso B o C, sabremos el tipo de gráfico.
     viz_type_to_log = query_plan.viz_type
     viz_title_response = query_plan.viz_title or request.message
@@ -102,11 +177,9 @@ def _try_llm_engine(request, start_time, background_tasks) -> QueryResponse:
     logger.info(f"SQL Generado: {generated_sql}")
 
     # PASO C: Seguridad y Ejecución en Base de Datos (Acceso a Datos)
-    # --------------------------------------------------
-    # Ejecutar (Helper encapsula seguridad y conexión)
     # El LLM no usa params externos, pasamos None
     df = _execute_sql_safe(generated_sql, params=None)
-
+    
     row_count = len(df)
     elapsed = round(time.time() - start_time, 4)
     # Generación de respuesta (AHORA CON IA)
@@ -263,8 +336,11 @@ async def ask_database(request: QueryRequest, background_tasks: BackgroundTasks)
         return _try_llm_engine(request, start_time, background_tasks)
 
     except Exception as e:
+        # Capture best available context
+        error_sql = generated_sql or sql_candidate or "SQL not generated"
+        error_viz = viz_type_to_log or viz_type_candidate or "unknown"
         return _handle_query_error(
             e, request, start_time, background_tasks,
-            sql=generated_sql,
-            model_used=request.model,
-            viz=viz_type_to_log)
+            sql=error_sql,
+            model_used=request.model or MODELO_PRINCIPAL,
+            viz=error_viz)
