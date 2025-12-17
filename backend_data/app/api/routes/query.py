@@ -66,7 +66,7 @@ def _try_rules_engine(request, start_time, background_tasks) -> Optional[QueryRe
             tiene_grafica=False
         )
 
-        # RETORNO LIMPIO (Lo que pediste)
+        # RETORNO LIMPIO
         return _build_response(
             request=request,
             df=pd.DataFrame(),  # -> Se convierte en "datos": []
@@ -76,8 +76,7 @@ def _try_rules_engine(request, start_time, background_tasks) -> Optional[QueryRe
             message=static_msg, # -> "¡Hola! Soy tu asistente..." (Sin prefijos)
             tiene_grafica=False,
             viz_title=None,
-            grafica_base64=None,
-            motor="rules"
+            grafica_base64=None
         )
 
     # =========================================================================
@@ -88,7 +87,7 @@ def _try_rules_engine(request, start_time, background_tasks) -> Optional[QueryRe
     # Preparar datos candidatos
     sql_raw = rule_hit["sql"] # borrar luego de testear
     sql_candidate = f"/* ⚡ REGLA */ {sql_raw}" # borrar luego de testear
-    #sql_candidate = rule_hit["sql"]
+    #sql_candidate = rule_hit["sql"] # activar luego de testear
     params_candidate = rule_hit.get("params", {}) # <--- Capturamos los params (:p1)
     viz_type_candidate = rule_hit["viz_type"]
     viz_title_candidate = rule_hit["viz_title"]
@@ -138,6 +137,36 @@ def _try_llm_engine(request, start_time, background_tasks) -> QueryResponse:
     # PASO A: Generar el Plan
     query_plan = generate_query_plan(request.message, llm_model_name=model_to_use)
     #query_plan_dict = query_plan.model_dump() # <--- Guardamos el JSON
+
+    # FILTRO ANTI-CHITCHAT
+    # Si el LLM no encontró métricas ni dimensiones, es una charla casual.
+    if not query_plan.metrics and not query_plan.dimensions and not query_plan.filters:
+        logger.info("   ⚠️ [LLM] Plan vacío detectado. Respondiendo como chitchat.")
+        elapsed = round(time.time() - start_time, 4)
+        
+        fallback_msg = "Soy un asistente especializado en datos de la empresa (Ventas, Empleados, Productos). Por favor, hazme una pregunta sobre esos temas."
+        
+        _log_audit(
+            bg_tasks=background_tasks,
+            req=request,
+            sql=None,
+            model_used=model_to_use,
+            rows=0,
+            time_taken=elapsed,
+            viz="text",
+            error=None,
+            tiene_grafica=False
+        )
+        
+        return _build_response(
+            request=request,
+            df=pd.DataFrame(),
+            sql=None,
+            viz_type="text",
+            elapsed=elapsed,
+            message=fallback_msg,
+            tiene_grafica=False
+        )
 
     # CAPTURA DEL ESTADO: Si falla en el paso B o C, sabremos el tipo de gráfico.
     viz_type_to_log = query_plan.viz_type

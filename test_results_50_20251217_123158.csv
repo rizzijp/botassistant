@@ -1,0 +1,51 @@
+question,status,engine,rows,time_sec,sql_snippet,viz_title
+Hola,ERROR,ERROR,0,,,
+Buenos dias,ERROR,ERROR,0,,,
+Que tal,ERROR,ERROR,0,,,
+Salario de Javier Torres,OK,⚡ REGLAS,1,1.93,/* ⚡ REGLA */                  SELECT             ...,N/A
+Cuanto gana Sofia Ruiz,OK,⚡ REGLAS,1,1.98,/* ⚡ REGLA */                  SELECT             ...,N/A
+Puesto de Andrea Reyes,OK,⚡ REGLAS,1,1.98,/* ⚡ REGLA */                  SELECT             ...,N/A
+Cargo de Diego Herrera,OK,⚡ REGLAS,1,1.94,/* ⚡ REGLA */                  SELECT             ...,N/A
+Quien es Carlos Perez,OK,⚡ REGLAS,1,1.93,/* ⚡ REGLA */                  SELECT             ...,N/A
+Datos de Lucia Castillo,OK,⚡ REGLAS,1,1.89,/* ⚡ REGLA */                  SELECT             ...,N/A
+Top 5 salarios,OK,⚡ REGLAS,5,1.9,/* ⚡ REGLA */                  SELECT             ...,N/A
+Los 3 empleados con mayor sueldo,OK,⚡ REGLAS,3,1.97,/* ⚡ REGLA */                  SELECT             ...,N/A
+Cliente Roberto Rivas,OK,⚡ REGLAS,2,1.91,/* ⚡ REGLA */                  SELECT             ...,N/A
+Datos del cliente Marina Garcia,OK,⚡ REGLAS,0,1.92,/* ⚡ REGLA */                  SELECT             ...,N/A
+Contacto de Luis Lopez,OK,⚡ REGLAS,2,1.94,/* ⚡ REGLA */                  SELECT             ...,N/A
+Buscar cliente Andrea Santos,OK,⚡ REGLAS,4,1.93,/* ⚡ REGLA */                  SELECT             ...,N/A
+Precio del Monitor Moderno,OK,⚡ REGLAS,1,1.94,/* ⚡ REGLA */                  SELECT product_name...,N/A
+Cuanto cuesta el Smartphone Slim,OK,⚡ REGLAS,2,1.88,/* ⚡ REGLA */                  SELECT product_name...,N/A
+Valor de la Silla Vintage,OK,⚡ REGLAS,0,1.93,/* ⚡ REGLA */                  SELECT product_name...,N/A
+Precio de zapatillas,OK,⚡ REGLAS,10,2.37,/* ⚡ REGLA */                  SELECT product_name...,N/A
+Cuanto cuesta el mouse,OK,⚡ REGLAS,7,2.52,/* ⚡ REGLA */                  SELECT product_name...,N/A
+Ventas por canal,OK,⚡ REGLAS,3,2.49,/* ⚡ REGLA */                  SELECT sales_channe...,N/A
+Ventas online,OK,⚡ REGLAS,3,2.33,/* ⚡ REGLA */                  SELECT sales_channe...,N/A
+Ventas por metodo de pago,OK,⚡ REGLAS,4,2.35,/* ⚡ REGLA */                  SELECT payment_meth...,N/A
+Como pagan mas los clientes,OK,⚡ REGLAS,4,2.29,/* ⚡ REGLA */                  SELECT payment_meth...,N/A
+Ventas por categoria,OK,⚡ REGLAS,5,2.44,"/* ⚡ REGLA */                  SELECT p.category, ...",N/A
+Rendimiento por categoria,OK,⚡ REGLAS,5,2.37,"/* ⚡ REGLA */                  SELECT p.category, ...",N/A
+Ventas por region,OK,⚡ REGLAS,5,2.33,"/* ⚡ REGLA */                  SELECT c.region, SU...",N/A
+Ventas por zona,OK,⚡ REGLAS,5,2.4,"/* ⚡ REGLA */                  SELECT c.region, SU...",N/A
+Ventas totales,OK,⚡ REGLAS,1,2.39,/* ⚡ REGLA */ SELECT SUM(total) as total_ventas FR...,N/A
+Cuanto vendimos en total,OK,⚡ REGLAS,1,2.36,/* ⚡ REGLA */ SELECT SUM(total) as total_ventas FR...,N/A
+Top 5 productos mas vendidos,OK,⚡ REGLAS,5,2.52,/* ⚡ REGLA */                  SELECT p.product_na...,N/A
+Cuales son los 10 productos que mas salen,OK,⚡ REGLAS,10,2.46,/* ⚡ REGLA */                  SELECT p.product_na...,N/A
+Top 5 productos,OK,⚡ REGLAS,5,2.33,/* ⚡ REGLA */                  SELECT p.product_na...,N/A
+Los 3 mejores productos,OK,⚡ REGLAS,3,2.49,/* ⚡ REGLA */                  SELECT p.product_na...,N/A
+Ventas 2024,OK,⚡ REGLAS,12,2.37,/* ⚡ REGLA */                  SELECT TO_CHAR(sale...,N/A
+Ingresos 2023,OK,⚡ REGLAS,12,2.28,/* ⚡ REGLA */                  SELECT TO_CHAR(sale...,N/A
+Ventas de monitores,OK,⚡ REGLAS,0,2.38,/* ⚡ REGLA */                  SELECT             ...,N/A
+Como va la zona Norte,OK,⚡ REGLAS,0,2.35,/* ⚡ REGLA */                  SELECT             ...,N/A
+Ingresos de laptops,OK,⚡ REGLAS,0,2.48,/* ⚡ REGLA */                  SELECT             ...,N/A
+Ventas de monitores en enero 2024,OK,🤖 LLM,0,2.95,"SELECT products.product_name, SUM(total) AS total_...",N/A
+Promedio de ventas por dia,OK,🤖 LLM,50,3.26,"SELECT sale_timestamp, AVG(total) AS avg_ticket  F...",N/A
+Clientes de Mexico que compraron monitores,OK,🤖 LLM,0,2.71,"SELECT customers.region, COUNT(sale_id) AS count_s...",N/A
+Empleados del departamento TI que ganan mas de 3000,OK,🤖 LLM,50,3.15,"SELECT employees.first_name, employees.last_name, ...",N/A
+Comparar ventas entre 2023 y 2024,OK,🤖 LLM,2,3.18,"SELECT EXTRACT(YEAR FROM sale_timestamp), SUM(tota...",N/A
+Cual fue la venta mas alta registrada,OK,🤖 LLM,1,2.63,SELECT total  FROM public.sales ORDER BY total DES...,N/A
+Cuantos clientes unicos tenemos,ERROR,ERROR,0,,,
+Ticket promedio de venta online,OK,🤖 LLM,1,3.08,SELECT AVG(total) AS avg_ticket  FROM public.sales...,N/A
+Productos que nunca se han vendido,OK,🤖 LLM,1,3.59,SELECT products.product_name FROM public.products ...,N/A
+Ventas totales agrupadas por vendedor,OK,⚡ REGLAS,0,1.93,/* ⚡ REGLA */                  SELECT             ...,N/A
+Dame un resumen de las ventas de ayer,OK,🤖 LLM,1,2.58,"SELECT SUM(total) AS total_sales, SUM(quantity) AS...",N/A
