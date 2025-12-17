@@ -1,199 +1,180 @@
 from app.semantic.models.query_plan import QueryPlan
 from app.semantic.loader import load_semantic_model
+import re
 
 def compile_sql(plan: QueryPlan) -> str:
     """
     Traduce un QueryPlan (JSON) a SQL ejecutable de PostgreSQL.
-    Genera JOINs tanto para dimensiones como para filtros.
-    Características:
-    - Dinámico: Lee relaciones y métricas desde semantic_model.yaml
-    - Flexible: Usa unaccent e ILIKE para búsquedas de texto.
-    Soporta fechas relativas y limpia operadores sucios.
+    Versión corregida (v2):
+    - Fuerza JOINs si hay métricas de hechos (arregla 'column does not exist').
+    - Traduce YEAR()/MONTH() a EXTRACT (arregla 'function does not exist').
+    - Detecta subconsultas en filtros y NO les pone comillas (arregla syntax error).
     """
-    # Cargamos el modelo para entender las relaciones y definiciones reales
     model = load_semantic_model()
 
-    # Detect if all columns belong to a single dimension table
+    # 1. Identificar tablas necesarias basadas en Dimensiones y Filtros
     all_columns = set(plan.dimensions) | {f.column for f in plan.filters}
-    
-    # Find which table(s) we need
     needed_tables = set()
-    for col in all_columns:
-        for table in model.tables:
-            if any(c.name == col for c in table.columns):
-                needed_tables.add(table.name)
-                break
     
-    # If only 1 table needed, query it directly!
-    if len(needed_tables) == 1 and 'sales' not in needed_tables:
+    # Mapeo previo para saber qué tablas necesitamos
+    for table in model.tables:
+        for col in table.columns:
+            if col.name in all_columns:
+                needed_tables.add(table.name)
+
+    # 2. Lógica de Optimización vs JOINS
+    # Si hay métricas (ej: total_sales), CASI SIEMPRE necesitamos la tabla de hechos (sales).
+    # La optimización de "tabla única" solo vale si NO pedimos métricas de hechos.
+    metric_needs_fact = False
+    if plan.metrics:
+        fact_table_def = next(t for t in model.tables if t.name == 'sales')
+        fact_metrics = [m.name for m in fact_table_def.metrics] if fact_table_def.metrics else []
+        fact_cols = [c.name for c in fact_table_def.columns]
+        
+        # Si pedimos una métrica calculada O una columna cruda de 'sales' (como 'total')
+        if any(m in fact_metrics for m in plan.metrics) or \
+           any(m in fact_cols for m in plan.metrics):
+            metric_needs_fact = True
+
+    # DECISIÓN: ¿Consultamos tabla simple o hacemos JOINS?
+    use_simple_query = (len(needed_tables) == 1) and \
+                       ('sales' not in needed_tables) and \
+                       (not metric_needs_fact)
+
+    # --- CAMINO A: CONSULTA SIMPLE (Solo Dimensiones) ---
+    if use_simple_query:
         primary_table = next(t for t in model.tables if t.name in needed_tables)
         
-        # Build simple query without JOINs
         select_clauses = []
-        
-        # Add all dimensions
         for dim in plan.dimensions:
             select_clauses.append(f"{primary_table.name}.{dim}")
         
-        # Add metrics if any (should be rare for dimension tables)
+        # Rara vez habrá métricas aquí, pero por si acaso
         for metric in plan.metrics:
             select_clauses.append(metric)
         
-        # Build WHERE clause
-        where_clauses = []
-        for f in plan.filters:
-            col = f"{primary_table.name}.{f.column}"
-            op = f.operator.strip("',\" ")
-            val = f.value
-            
-            # Handle text searches
-            if isinstance(val, str) and op in ["=", "LIKE", "ILIKE"]:
-                clean_val = val.replace("%", "")
-                where_clauses.append(f"unaccent({col}) ILIKE unaccent('%%{clean_val}%%')")
-            else:
-                formatted_val = f"'{val}'" if isinstance(val, str) else val
-                where_clauses.append(f"{col} {op} {formatted_val}")
+        where_clauses = _build_where_clauses(plan.filters, primary_table.name)
         
-        # Assemble SQL
         sql = f"SELECT {', '.join(select_clauses)}\nFROM {primary_table.schema_name}.{primary_table.name}"
-        
         if where_clauses:
             sql += f"\nWHERE {' AND '.join(where_clauses)}"
-        
-        # Add ORDER BY if there are dimensions to sort by
         if plan.dimensions:
             sql += f"\nORDER BY {plan.dimensions[0]} DESC"
-        
         if plan.limit:
             sql += f"\nLIMIT {plan.limit}"
         
         return sql
+
     else:
-        # Use existing logic with fact table + JOINs
-        
-        # 1. Identificar tabla de hechos
+        # --- CAMINO B: MODO COMPLEJO (JOINS con Fact Table) ---
         fact_table = next(t for t in model.tables if t.name == 'sales')
         fact_columns = [c.name for c in fact_table.columns]
-        
-        # 2. Recopilar todas las columnas necesarias (Dimensiones + Filtros)
-        #    Para saber qué tablas necesitamos unir.
+
+        # Recolectamos columnas necesarias (dims + filters)
         needed_columns = set(plan.dimensions)
         for f in plan.filters:
             needed_columns.add(f.column)
 
-        # Diccionario para saber a qué tabla pertenece cada columna
-        # Clave: 'dim_product.category' (o 'category') -> Valor: 'dim_product'
-        col_map = {}
-            
-        # 3. Construir JOINs
-        #    Empezamos con la tabla de hechos
-        from_clause = f"{fact_table.schema_name}.{fact_table.name}"
+        col_map = {} 
         joins = []
         processed_tables = set()
 
+        # 3. Construcción de JOINS y Mapeo de Columnas
         for raw_col in needed_columns:
-            # A. LIMPIEZA DE PREFIJOS
-            # Si la columna viene como 'dim_product.category', nos quedamos solo con 'category'
-            # para buscarla en el diccionario de tablas.
-            col_name = raw_col.split(".")[-1] if "." in raw_col else raw_col
+            # Limpieza: Extraer nombre base si viene como YEAR(col)
+            simple_col_name = raw_col
+            if "(" in raw_col:
+                match = re.search(r'\((.*?)\)', raw_col)
+                if match:
+                    simple_col_name = match.group(1)
 
-            # B. LÓGICA DE DETECCIÓN
-            # ¿Está en la tabla de hechos?
+            # Quitar prefijos si existen
+            col_name = simple_col_name.split(".")[-1]
+
+            # Buscar a qué tabla pertenece
             if col_name in fact_columns:
-                # Mapeo directo: 'total' -> 'fact_sales.total'
-                col_map[raw_col] = col_name
-
+                col_map[raw_col] = f"{fact_table.name}.{col_name}"
             else:
-                # Si la columna no está en la tabla de hechos, buscamos en qué dimensión vive
                 dim_table = None
-                # Buscamos en qué tabla vive esta columna
                 for t in model.tables:
                     if any(c.name == col_name for c in t.columns):
                         dim_table = t
                         break
                 
-                # Si encontramos la tabla...
                 if dim_table:
-                    # Mapeo dimensión: 'category' -> 'dim_product.category'
-                    col_map[raw_col] = f"{dim_table.name}.{col_name}"
-                    # ... y si no hemos hecho el JOIN...
+                    # Mapeamos usando el nombre original (raw) para encontrarlo luego
+                    col_map[simple_col_name] = f"{dim_table.name}.{col_name}"
+                    # Si era una funcion, intentamos mapear también la clave compleja
+                    if simple_col_name != raw_col:
+                         col_map[raw_col] = f"{dim_table.name}.{col_name}"
+
+                    # Generar JOIN
                     if dim_table.name not in processed_tables and dim_table.name != fact_table.name:
-                        # Buscamos la relación en el modelo (Foreign Key)
                         rel = next((r for r in model.relationships 
                                     if r.from_table == fact_table.name and r.to_table == dim_table.name), None)
-                        
                         if rel:
-                            # Generamos el JOIN SQL
-                            join_sql = f"JOIN {dim_table.schema_name}.{dim_table.name} ON {fact_table.name}.{rel.from_column} = {dim_table.name}.{rel.to_column}"
-                            joins.append(join_sql)
+                            joins.append(f"JOIN {dim_table.schema_name}.{dim_table.name} ON {fact_table.name}.{rel.from_column} = {dim_table.name}.{rel.to_column}")
                             processed_tables.add(dim_table.name)
 
-        # 4. Construir SELECT
+        # 4. Construir SELECT (Traduciendo funciones)
         select_clauses = []
-        # A. Dimensiones
+        
         for dim in plan.dimensions:
-            select_clauses.append(col_map.get(dim, dim))
-        # B. Métricas (Buscamos la definición SQL real, ej: SUM(total))
+            # Detectar funciones de fecha no válidas en Postgres
+            if "YEAR(" in dim.upper():
+                inner = re.search(r'\((.*?)\)', dim).group(1)
+                # Asumimos que si pide año es de la tabla de hechos o mapeada
+                col_ref = col_map.get(inner, f"{fact_table.name}.{inner}")
+                select_clauses.append(f"EXTRACT(YEAR FROM {col_ref})")
+            
+            elif "MONTH(" in dim.upper():
+                inner = re.search(r'\((.*?)\)', dim).group(1)
+                col_ref = col_map.get(inner, f"{fact_table.name}.{inner}")
+                select_clauses.append(f"EXTRACT(MONTH FROM {col_ref})")
+            
+            else:
+                # Columna normal
+                select_clauses.append(col_map.get(dim, f"{fact_table.name}.{dim}"))
+
+        # Métricas
         for metric_name in plan.metrics:
             metric_def = next((m for m in fact_table.metrics if m.name == metric_name), None)
             if metric_def:
                 select_clauses.append(f"{metric_def.sql} AS {metric_name}")
             else:
-                # Fallback por si la IA inventó un nombre, lo pasamos directo
-                select_clauses.append(metric_name)
+                # Si piden 'total' o 'quantity' crudo
+                if metric_name in fact_columns:
+                    select_clauses.append(f"{fact_table.name}.{metric_name}")
+                else:
+                    select_clauses.append(metric_name)
 
         # 5. Construir WHERE
-        where_clauses = []
-
-        # Define aquí el nombre REAL de tu columna de fecha en la DB de Render
-        REAL_DATE_COL = "sales.sale_timestamp"
-        
+        # Pre-procesamos los filtros para asignarles su tabla correcta usando col_map
+        mapped_filters = []
         for f in plan.filters:
-            col = col_map.get(f.column, f.column)
-            # LIMPIEZA DE OPERADOR: Quitamos comillas o comas extra que la IA alucine
-            # Si la IA manda ">='" lo convertimos a ">="
-            op = f.operator.strip("',\" ")
-            val = f.value
+            # Intentamos resolver el nombre cualificado
+            if f.column in col_map:
+                f.column = col_map[f.column]
+            elif f.column in fact_columns:
+                f.column = f"{fact_table.name}.{f.column}"
+            # Si no, lo dejamos pasar (probablemente falle, pero ya hicimos lo posible)
+            mapped_filters.append(f)
 
+        where_clauses = _build_where_clauses(mapped_filters, default_table=fact_table.name)
 
-            # --- LÓGICA VIRTUAL DE FECHAS ---
-            # Si la IA pide filtrar por 'year', usamos la columna timestamp real
-            if f.column == 'year':
-                where_clauses.append(f"EXTRACT(YEAR FROM {REAL_DATE_COL}) {op} {val}")
-                
-            # Si la IA pide filtrar por 'month', extraemos el mes
-            elif f.column == 'month':
-                where_clauses.append(f"EXTRACT(MONTH FROM {REAL_DATE_COL}) {op} {val}")
-                
-            # Lógica para operador MONTH recurrente (ej: "ventas en noviembre")
-            elif op == "MONTH":
-                where_clauses.append(f"EXTRACT(MONTH FROM {REAL_DATE_COL}) IN ({val})")
-
-            # --- RESTO DE LA LÓGICA (Texto y Números) ---
-            elif isinstance(val, str) and op in ["=", "LIKE", "ILIKE"]:
-                clean_val = val.replace("%", "")
-                where_clauses.append(f"unaccent({col}) ILIKE unaccent('%%{clean_val}%%')")
-            else:
-                formatted_val = f"'{val}'" if isinstance(val, str) else val
-                where_clauses.append(f"{col} {op} {formatted_val}")
-
-
-        # 6. Ensamblar Query Final
-        sql = f"SELECT {', '.join(select_clauses)} \nFROM {from_clause}"
-        
+        # 6. Ensamblar Query
+        sql = f"SELECT {', '.join(select_clauses)} \nFROM {fact_table.schema_name}.{fact_table.name}"
         if joins:
             sql += "\n" + "\n".join(joins)
-            
         if where_clauses:
             sql += "\nWHERE " + " AND ".join(where_clauses)
             
         if plan.dimensions:
+            # Group by índices posicionales para evitar errores con alias/funciones
             indices = [str(i+1) for i in range(len(plan.dimensions))]
             sql += f"\nGROUP BY {', '.join(indices)}"
 
-        # Si hay métricas, ordenamos por la primera de mayor a menor (Top ventas, etc.)
         if plan.metrics:
-            # Usamos el alias de la primera métrica
             sql += f"\nORDER BY {plan.metrics[0]} DESC"
             
         if plan.limit:
@@ -201,20 +182,45 @@ def compile_sql(plan: QueryPlan) -> str:
             
         return sql
 
-# --- Prueba Rápida ---
-if __name__ == "__main__":
-    from app.semantic.models.query_plan import Filter
-    
-    # Caso de prueba difícil: Agrupar por CATEGORÍA (Producto) pero filtrar por REGIÓN (Cliente)
-    test_plan = QueryPlan(
-        metrics=["total_sales"],
-        dimensions=["category"], 
-        filters=[Filter(column="region", operator="=", value="Norte")],
-        limit=5
-    )
-    
-    print("🏗️ Generando SQL de Prueba...")
-    try:
-        print(compile_sql(test_plan))
-    except Exception as e:
-        print(f"❌ Error: {e}")
+def _build_where_clauses(filters, default_table):
+    clauses = []
+    # Nombre de columna de fecha por defecto
+    REAL_DATE_COL = f"{default_table}.sale_timestamp"
+
+    for f in filters:
+        col = f.column
+        op = f.operator.strip("',\" ")
+        val = f.value
+
+        # --- Traducción de Fechas ---
+        if f.column == 'year' or f.column.endswith('.year'): # .year es raro pero posible
+            clauses.append(f"EXTRACT(YEAR FROM {REAL_DATE_COL}) {op} {val}")
+        elif f.column == 'month' or f.column.endswith('.month'):
+            clauses.append(f"EXTRACT(MONTH FROM {REAL_DATE_COL}) {op} {val}")
+        elif op == "MONTH":
+            clauses.append(f"EXTRACT(MONTH FROM {REAL_DATE_COL}) IN ({val})")
+        
+        else:
+            # --- Manejo de Valores (Strings vs Subqueries) ---
+            final_val = val
+            
+            if isinstance(val, str):
+                # Si parece una subconsulta (empieza con parentesis y SELECT)
+                val_clean = val.strip()
+                is_subquery = val_clean.startswith("(") and "SELECT" in val_clean.upper()
+                
+                if (op.upper() in ["IN", "NOT IN"]) and (val_clean.startswith("(") or is_subquery):
+                    # NO poner comillas
+                    final_val = val_clean
+                elif op in ["=", "LIKE", "ILIKE"]:
+                    # Búsqueda de texto normal
+                    clean_str = val.replace("%", "")
+                    clauses.append(f"unaccent({col}) ILIKE unaccent('%%{clean_str}%%')")
+                    continue 
+                else:
+                    # String normal
+                    final_val = f"'{val}'"
+            
+            clauses.append(f"{col} {op} {final_val}")
+            
+    return clauses

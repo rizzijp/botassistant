@@ -17,7 +17,7 @@ from app.core.llm import call_llm
 from app.semantic.models.query_plan import VizType
 from app.semantic.rules_engine import check_rules
 import logging
-from app.api.services.sql_executor import _execute_sql_safe  
+from app.api.services.sql_executor import _execute_sql_safe
 from app.api.services.response_builder import (
     _build_response,
     _generate_success_message_static,
@@ -39,12 +39,28 @@ def _try_rules_engine(request, start_time, background_tasks) -> Optional[QueryRe
     logger.info(f"   ⚡ [RULES] Regla encontrada: {rule_hit.get('viz_title')}")
 
     # Preparar datos candidatos
-    sql_raw = rule_hit["sql"] # borrar luego de testear
-    sql_candidate = f"/* ⚡ REGLA */ {sql_raw}" # borrar luego de testear
-    #sql_candidate = rule_hit["sql"]
+    sql_candidate = rule_hit["sql"]
     params_candidate = rule_hit.get("params", {}) # <--- Capturamos los params (:p1)
     viz_type_candidate = rule_hit["viz_type"]
     viz_title_candidate = rule_hit["viz_title"]
+
+    # --- CORRECCIÓN AQUÍ: Manejo de reglas sin SQL (Saludos) ---
+    if sql_candidate is None:
+        logger.info(f"    ✅ [RULES SUCCESS] Respuesta estática (sin SQL).")
+        elapsed = round(time.time() - start_time, 4)
+        
+        # Retorno directo sin tocar la BD
+        return _build_response(
+            request=request,
+            df=pd.DataFrame(), # DataFrame vacío
+            sql=None,
+            viz_type=viz_type_candidate,
+            viz_title=viz_title_candidate,
+            elapsed=elapsed,
+            message=rule_hit.get("static_message", "Respuesta predefinida."),
+            tiene_grafica=False,
+            grafica_base64=None
+        )
     
     # Ejecutamos (Helper encapsula seguridad y conexión)
     df = _execute_sql_safe(sql_candidate, params_candidate)

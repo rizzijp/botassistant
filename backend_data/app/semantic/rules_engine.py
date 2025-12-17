@@ -1,14 +1,21 @@
 import re
 import unicodedata
 from typing import Optional, Dict, Any
+import logging
+
+# Logger para ver qué pasa por dentro
+logger = logging.getLogger(__name__)
 
 def normalize_text(text: str) -> str:
     """
     Normaliza el texto eliminando tildes y convirtiendo a minúsculas.
     """
+    if not text: 
+        return ""
     text = text.lower().strip()
     text = ''.join(c for c in unicodedata.normalize('NFD', text) if unicodedata.category(c) != 'Mn')
-    return re.sub(r'\s+', ' ', text)
+    text = re.sub(r'\s+', ' ', text)
+    return text
 
 # --- NOMBRES REALES DE LA BASE DE DATOS ---
 TABLE_SALES = "public.sales"
@@ -24,11 +31,14 @@ RULES_CATALOG = [
     # -------------------------------------------------------------------------
     # 1. SALUDOS
     # -------------------------------------------------------------------------
-    {
+   {
         "patterns": [r"^hola$", r"^buenos dias$", r"^buenas tardes$", r"^que tal$"],
         "response_template": {
-            "sql": "SELECT '¡Hola! Soy tu asistente de datos. Pregúntame sobre ventas, empleados, clientes o productos.' as mensaje",
-            "viz_type": "number",
+            # Ponemos SQL en None para indicar que NO debe ejecutar nada
+            "sql": None, 
+            # Este es el mensaje directo que quieres devolver
+            "static_message": "¡Hola! Soy tu asistente de datos. Pregúntame sobre ventas, empleados, clientes o productos.",
+            "viz_type": "text",
             "viz_title": "Saludo"
         }
     },
@@ -52,6 +62,7 @@ RULES_CATALOG = [
         "patterns": [
             r"^salario (?:de |del )?(.+)$",
             r"^cuanto gana (?:el empleado |la empleada )?(.+)$",
+            r"^cuanto cobra (?:el empleado |la empleada )?(.+)$",
             r"^puesto (?:de |del )?(.+)$",
             r"^cargo (?:de |del )?(.+)$",
             r"^datos (?:de |del |del empleado )?(.+)$",
@@ -288,38 +299,6 @@ RULES_CATALOG = [
             "viz_title": "Evolución Ventas {captured}"
         },
         "params_mapper": lambda captured: int(captured)
-    },
-
-    # -------------------------------------------------------------------------
-    # 9. BÚSQUEDA GENÉRICA (Fallback inteligente)
-    # -------------------------------------------------------------------------
-    # AL FINAL DE TODO para no "robar" consultas
-    {
-        "patterns": [
-            r"^ventas (?:en |de |del )?(.+)$", 
-            r"^ingresos (?:en |de |del )?(.+)$",
-            r"^como va (?:la zona |la region |el producto )?(.+)$"
-        ],
-        "response_template": {
-            "sql": """
-                SELECT 
-                    p.product_name, 
-                    c.region,
-                    SUM(f.total) as ventas
-                FROM {TABLE_SALES} f
-                JOIN {TABLE_PROD} p ON f.product_id = p.product_id
-                JOIN {TABLE_CUST} c ON f.customer_id = c.customer_id
-                WHERE unaccent(p.product_name) ILIKE unaccent(%(p1)s) 
-                   OR unaccent(p.category) ILIKE unaccent(%(p1)s) 
-                   OR unaccent(c.region) ILIKE unaccent(%(p1)s)
-                GROUP BY p.product_name, c.region
-                ORDER BY ventas DESC
-                LIMIT 20
-            """,
-            "viz_type": "table",
-            "viz_title": "Resultados de búsqueda para '{captured}'"
-        },
-        "params_mapper": lambda captured: f"%{captured}%"
     }
 ]
 
@@ -333,13 +312,15 @@ def check_rules(question: str) -> Optional[Dict[str, Any]]:
                 template = rule["response_template"]
                 result = template.copy()
 
-                result["sql"] = result["sql"].format(
-                    TABLE_SALES=TABLE_SALES,
-                    TABLE_PROD=TABLE_PROD,
-                    TABLE_CUST=TABLE_CUST,
-                    TABLE_EMP=TABLE_EMP,
-                    COL_DATE=COL_DATE
-                )
+                # Only format SQL if it exists (not None for static messages)
+                if result["sql"] is not None:
+                    result["sql"] = result["sql"].format(
+                        TABLE_SALES=TABLE_SALES,
+                        TABLE_PROD=TABLE_PROD,
+                        TABLE_CUST=TABLE_CUST,
+                        TABLE_EMP=TABLE_EMP,
+                        COL_DATE=COL_DATE
+                    )
 
                 result["params"] = {} 
 
@@ -355,4 +336,5 @@ def check_rules(question: str) -> Optional[Dict[str, Any]]:
                         continue 
 
                 return result
+    print(f"❌ [DEBUG RULES] Ninguna regla coincidió para: '{q_clean}'") # DEBUG
     return None

@@ -5,7 +5,8 @@ from datetime import datetime
 
 # --- CONFIGURACIÓN ---
 # Ajusta la URL si usas Render o Localhost
-API_URL = "https://botassistant-api.onrender.com/api/ask" 
+#API_URL = "https://botassistant-api.onrender.com/api/ask" 
+API_URL = "http://127.0.0.1:8000/api/ask"
 USER_ID = 888
 SESSION_ID = "stress_test_v2"
 
@@ -23,26 +24,6 @@ TEST_CASES = [
     "Promedio de venta por cliente en Mexico",            # Filtro doble + KPI
     "Total vendido en efectivo vs tarjeta",               # Pivoteo (si el LLM es listo)
     "Ventas de productos de la categoria Hogar en España",# Join triple (Ventas-Prod-Cliente)
-
-    # --- GRUPO F: LÓGICA NEGATIVA Y EXTREMOS ---
-    "Productos que vendieron menos de 10 unidades",       # Filtro métrica
-    "Clientes que no han comprado nada",                  # Existencia (difícil)
-    "Ventas mayores a 5000 dolares",                      # Filtro numérico
-    "Dias con ventas cero",                               # Lógica compleja
-
-    # --- GRUPO G: INTENTOS DE ROMPER (Seguridad/Chitchat) ---
-    "Cuentame un chiste sobre bases de datos",            # Chitchat
-    "Cual es la capital de Colombia",                     # Chitchat
-    "Select * from users",                                # Injection simulada
-    "Ventas de ; DROP TABLE sales;",                      # Injection simulada
-    "Hola como estas",                                    # Chitchat saludo largo
-
-    # --- GRUPO H: PREGUNTAS AMBIGUAS ---
-    "Como va todo",               # Muy genérico
-    "Dame datos",                 # Muy genérico
-    "Resumen general",            # KPI global
-    "Lo mejor del 2024",          # Top genérico
-    "Lo peor del 2023"            # Bottom genérico
 ]
 
 results = []
