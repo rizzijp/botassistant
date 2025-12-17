@@ -20,4 +20,5 @@ MAPA_MODELOS = {
 
 # --- MODELO POR DEFECTO ---
 #MODELO_PRINCIPAL = "llama-3" # Usamos el ALIAS, no el nombre técnico
-MODELO_PRINCIPAL = "gemini-flash"
+MODELO_PRINCIPAL = "llama-fast"
+#MODELO_PRINCIPAL = "gemini-flash"

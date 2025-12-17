@@ -38,8 +38,7 @@ for i, question in enumerate(TEST_CASES):
         payload = {
             "user_id": USER_ID,
             "session_id": SESSION_ID,
-            "message": question,
-            "model": "llama-3"
+            "message": question
         }
         
         # Timeout un poco más alto para las complejas del LLM
