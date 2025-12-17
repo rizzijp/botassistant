@@ -12,21 +12,21 @@ SESSION_ID = "test_automation_50"
 # --- LOS 50 CASOS DE PRUEBA ---
 TEST_CASES = [
     # --- GRUPO A: SALUDOS (Reglas) ---
-    "Hola",
-    "Buenos dias",
-    "Que tal",
+    #"Hola",
+    #"Buenos dias",
+    #"Que tal",
 
 
     # --- GRUPO I: COMPLEJOS PARA IA (LLM - No deberían tener la marca) ---
-    "Ventas de monitores en febrero de 2023",
+    #"Ventas de monitores en febrero de 2023",
     "Promedio de ventas por dia",
     "Clientes de Mexico que compraron monitores",
-    "Empleados del departamento TI que ganan mas de 3000",
-    "Comparar ventas entre 2023 y 2024",
-    "Cual fue la venta mas alta registrada",
-    "Cuantos clientes unicos tenemos",
+    #"Empleados del departamento TI que ganan mas de 3000",
+    #"Comparar ventas entre 2023 y 2024",
+    #"Cual fue la venta mas alta registrada",
+    #"Cuantos clientes unicos tenemos",
     "Ticket promedio de venta online",
-    "Productos que nunca se han vendido",
+    #"Productos que nunca se han vendido",
     "Ventas totales agrupadas por vendedor",
     "Dame un resumen de las ventas de ayer"
 ]

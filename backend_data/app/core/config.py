@@ -15,7 +15,7 @@ MAPA_MODELOS = {
     "mixtral": "groq/mixtral-8x7b-32768",
     #"claude-3": "anthropic/claude-3-opus-20240229", (Requiere librería distinta, lo vemos luego)
     "gemini-pro": "gemini/gemini-1.5-pro",   # Modelo Potente de Google
-    "gemini-flash": "gemini/gemini-1.5-flash" # Modelo Rápido de Goog
+    "gemini-flash": "gemini/gemini-1.5-flash" # Modelo Rápido de Google
 }
 
 # --- MODELO POR DEFECTO ---

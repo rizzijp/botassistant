@@ -10,7 +10,7 @@ class QueryRequest(BaseModel):
     session_id: str = Field(..., description="Identificador único de la sesión")
     user_id: int = Field(..., description="Identificador del usuario")
     role: str = Field(default="user", description="Rol del usuario (ej: gerente, admin)")
-    model: Optional[str] = Field(default="llama-3", description="Modelo de IA a usar")
+    model: Optional[str] = Field(default=None, description="Modelo de IA a usar")
 
 class QueryResponse(BaseModel):
     #user_id: int se puede agregar cuando se implemente el audit log
