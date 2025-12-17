@@ -25,7 +25,8 @@ def compile_sql(plan: QueryPlan) -> str:
                 break
     
     # If only 1 table needed, query it directly!
-    if len(needed_tables) == 1 and 'sales' not in needed_tables:
+    # CRITICAL FIX: Only if NO metrics are requested (metrics usually imply aggregation on FACT table)
+    if len(needed_tables) == 1 and 'sales' not in needed_tables and not plan.metrics:
         primary_table = next(t for t in model.tables if t.name in needed_tables)
         
         # Build simple query without JOINs
@@ -97,13 +98,9 @@ def compile_sql(plan: QueryPlan) -> str:
             # para buscarla en el diccionario de tablas.
             col_name = raw_col.split(".")[-1] if "." in raw_col else raw_col
 
-            # DEBUG
-            print(f"DEBUG: Resolviendo columna '{raw_col}' (limpia: '{col_name}')")
-
             # B. LÓGICA DE DETECCIÓN
             # ¿Está en la tabla de hechos?
             if col_name in fact_columns:
-                print(f"DEBUG: '{col_name}' es columna de HECHOS (sales)")
                 # Mapeo directo: 'total' -> 'fact_sales.total'
                 col_map[raw_col] = col_name
 
