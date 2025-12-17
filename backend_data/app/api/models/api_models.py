@@ -22,5 +22,6 @@ class QueryResponse(BaseModel):
     columnas: List[str] = []
     total_filas: int = 0
     tipo_grafica: Optional[VizType] = None
+    #viz_title: Optional[str] = None
     tiene_grafica: bool = False
     grafica_base64: Optional[str] = None

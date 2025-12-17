@@ -120,7 +120,15 @@ for i, question in enumerate(TEST_CASES):
                 "rows": rows,
                 "time_sec": round(elapsed, 2),
                 "sql_snippet": sql[:50].replace("\n", " ") + "...",
-                "viz_title": viz
+                "sql_full": sql,  # Full SQL, not truncated
+                "viz_type": data.get("tipo_grafica", "N/A"),
+                "viz_title": viz,
+                "tiene_grafica": data.get("tiene_grafica", False),
+                "mensaje": data.get("mensaje", ""),
+                "total_filas": data.get("total_filas", 0),
+                "columnas": ",".join(data.get("columnas", [])),
+                # Save full JSON for debugging
+                "response_json": json.dumps(data)
             })
         else:
             print(f"❌ Error {response.status_code}")

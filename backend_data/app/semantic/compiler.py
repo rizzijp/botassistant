@@ -45,7 +45,7 @@ def compile_sql(plan: QueryPlan) -> str:
             col = f"{primary_table.name}.{f.column}"
             op = f.operator.strip("',\" ")
             val = f.value
-            
+
             # Handle text searches
             if isinstance(val, str) and op in ["=", "LIKE", "ILIKE"]:
                 clean_val = val.replace("%", "")

@@ -363,8 +363,11 @@ async def ask_database(request: QueryRequest, background_tasks: BackgroundTasks)
         return _try_llm_engine(request, start_time, background_tasks)
 
     except Exception as e:
+        # Capture best available context
+        error_sql = generated_sql or sql_candidate or "SQL not generated"
+        error_viz = viz_type_to_log or viz_type_candidate or "unknown"
         return _handle_query_error(
             e, request, start_time, background_tasks,
-            sql=generated_sql,
-            model_used=request.model,
-            viz=viz_type_to_log)
+            sql=error_sql,
+            model_used=request.model or MODELO_PRINCIPAL,
+            viz=error_viz)

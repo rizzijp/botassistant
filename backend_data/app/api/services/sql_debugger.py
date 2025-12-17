@@ -1,33 +1,27 @@
-import logging
-from app.core.llm import call_llm
-
-logger = logging.getLogger(__name__)
-
+from app.semantic.loader import load_semantic_model
 def fix_sql_with_llm(bad_sql: str, error_msg: str, model: str) -> str:
-    """
-    Agente especialista en reparación de SQL.
-    Actúa como un 'Self-Healing Agent': recibe el error de la DB y reescribe la query.
-    """
-    logger.warning(f"   ⚠️ [SQL DEBUGGER] Iniciando reparación. Error detectado: {error_msg}")
+    # Load schema to give LLM context
+    semantic_model = load_semantic_model()
     
-    system_prompt = """
+    # Build schema summary
+    schema_info = []
+    for table in semantic_model.tables:
+        cols = [c.name for c in table.columns]
+        schema_info.append(f"Table: {table.schema_name}.{table.name}\nColumns: {', '.join(cols)}")
+    
+    schema_text = "\n\n".join(schema_info)
+    
+    system_prompt = f"""
     You are an expert SQL Debugger Agent for PostgreSQL.
-    Your ONLY goal is to fix the SQL query based on the error message provided.
+    
+    AVAILABLE SCHEMA:
+    {schema_text}
     
     CRITICAL RULES:
-    1. Output ONLY the raw SQL code. No markdown (```sql), no comments, no explanations.
-    2. Do NOT change the business logic, only fix the syntax or column names.
-    3. If the error is 'column does not exist', replace it with the closest valid column name.
-    """
-    
-    user_prompt = f"""
-    FAILING SQL:
-    {bad_sql}
-    
-    POSTGRES ERROR:
-    {error_msg}
-    
-    CORRECTED SQL:
+    1. Output ONLY the raw SQL code. No markdown, no comments.
+    2. Fix syntax/column errors using ONLY the columns listed above.
+    3. If a column doesn't exist, use the closest valid column from the schema.
+    4. Preserve business logic and WHERE clauses.
     """
     
     try:
