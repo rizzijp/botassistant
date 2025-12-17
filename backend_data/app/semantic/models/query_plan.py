@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Literal
 
 # Definimos los tipos de gráficos válidos para que el Front no se rompa
-VizType = Literal["bar", "line", "pie", "number", "table", "scatter", "text"]
+VizType = Literal["bar", "line", "pie", "number", "table", "scatter"]
 
 # --- Estructuras para el Plan de Consulta (QueryPlan) ---
 

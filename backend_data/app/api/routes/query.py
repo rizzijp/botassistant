@@ -189,8 +189,7 @@ def _handle_query_error(e, request, start_time, background_tasks, sql=None, mode
     else:
         logger.error(f"Critical error: {e}", exc_info=True)
         status_code = 500
-        # DEBUG: Expose error to client to diagnose deployment issues
-        client_message = f"ERROR CRITICO: {str(e)}"
+        client_message = "Lo siento, hubo un error inesperado al procesar tu consulta."
 
     # Intentamos rescatar qué SQL falló (Reglas o LLM) para mostrarlo si es necesario
     #sql_failed = generated_sql if generated_sql else sql_candidate

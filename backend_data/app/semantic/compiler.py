@@ -25,8 +25,7 @@ def compile_sql(plan: QueryPlan) -> str:
                 break
     
     # If only 1 table needed, query it directly!
-    # CRITICAL FIX: Only if NO metrics are requested (metrics usually imply aggregation on FACT table)
-    if len(needed_tables) == 1 and 'sales' not in needed_tables and not plan.metrics:
+    if len(needed_tables) == 1 and 'sales' not in needed_tables:
         primary_table = next(t for t in model.tables if t.name in needed_tables)
         
         # Build simple query without JOINs
@@ -46,7 +45,7 @@ def compile_sql(plan: QueryPlan) -> str:
             col = f"{primary_table.name}.{f.column}"
             op = f.operator.strip("',\" ")
             val = f.value
-
+            
             # Handle text searches
             if isinstance(val, str) and op in ["=", "LIKE", "ILIKE"]:
                 clean_val = val.replace("%", "")
@@ -116,53 +115,18 @@ def compile_sql(plan: QueryPlan) -> str:
                 # Si encontramos la tabla...
                 if dim_table:
                     # Mapeo dimensión: 'category' -> 'dim_product.category'
-                    # Usamos el nombre limpio de la tabla
                     col_map[raw_col] = f"{dim_table.name}.{col_name}"
-                    
                     # ... y si no hemos hecho el JOIN...
                     if dim_table.name not in processed_tables and dim_table.name != fact_table.name:
-                        
-                        # Buscamos la relación de forma ROBUSTA (Bidireccional y Stripped)
-                        found_rel = None
-                        target_fact = fact_table.name.strip().lower()
-                        target_dim = dim_table.name.strip().lower()
-
-                        for r in model.relationships:
-                            # Safely handle potential None values (defensive)
-                            r_from = (r.from_table or "").strip().lower()
-                            r_to = (r.to_table or "").strip().lower()
-                            
-                            # Case 1: Fact -> Dim
-                            if r_from == target_fact and r_to == target_dim:
-                                found_rel = r
-                                break
-                            
-                            # Case 2: Dim -> Fact (Reverse definition)
-                            if r_from == target_dim and r_to == target_fact:
-                                found_rel = r
-                                break
-                        
-                        rel = found_rel
+                        # Buscamos la relación en el modelo (Foreign Key)
+                        rel = next((r for r in model.relationships 
+                                    if r.from_table == fact_table.name and r.to_table == dim_table.name), None)
                         
                         if rel:
-                            # Verify directon to build proper JOIN ON clause
-                            # We want JOIN dim ON fact.fk = dim.pk
-                            if (rel.from_table or "").strip().lower() == target_fact:
-                                left_col = f"{fact_table.name}.{rel.from_column}"
-                                right_col = f"{dim_table.name}.{rel.to_column}"
-                            else:
-                                # Relationship was defined Dim -> Fact, so swap columns for the JOIN ON
-                                left_col = f"{fact_table.name}.{rel.to_column}"
-                                right_col = f"{dim_table.name}.{rel.from_column}"
-
                             # Generamos el JOIN SQL
-                            join_sql = f"JOIN {dim_table.schema_name}.{dim_table.name} ON {left_col} = {right_col}"
+                            join_sql = f"JOIN {dim_table.schema_name}.{dim_table.name} ON {fact_table.name}.{rel.from_column} = {dim_table.name}.{rel.to_column}"
                             joins.append(join_sql)
                             processed_tables.add(dim_table.name)
-                        else:
-                            # Fallback logging if really needed, but keep code clean
-                            pass
-
 
         # 4. Construir SELECT
         select_clauses = []

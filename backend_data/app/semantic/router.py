@@ -52,15 +52,12 @@ def generate_query_plan(user_query: str, llm_model_name: str = MODELO_PRINCIPAL)
     Use EXCLUSIVELY this DATA MODEL SCHEMA:
     {schema_text}
     
-    DATE LOGIC RULES (STRICT):
+    DATE LOGIC RULES:
     1. SPECIFIC YEAR (e.g. "Nov 2023"): Use standard operators (>=, <=) with full dates (e.g., '2023-11-01').
     2. RECURRING MONTHS (e.g. "Sales in November" -> implies ALL years): 
        - Use operator 'MONTH' and value as comma-separated month numbers (e.g., value: "11").
-    3. SPECIFIC MONTH & YEAR (e.g. "Enero 2024"):
-        - Use TWO filters:
-          {"column": "month", "operator": "=", "value": "1"}, 
-          {"column": "year", "operator": "=", "value": "2024"}
-    4. CURRENT YEAR (e.g. "This year"): Filter sale_date >= '{current_year}-01-01'.
+       - Example: "Nov and Dec" -> operator: "MONTH", value: "11, 12".
+    3. CURRENT YEAR (e.g. "This year"): Filter sale_date >= '{current_year}-01-01'.
     4. CURRENT MONTH (e.g. "This month"): Filter sale_date >= '{current_year}-{today.month}-01'.
     5. CURRENT DAY (e.g. "Today"): Filter sale_date >= '{current_year}-{today.month}-{today.day}'.
     6. FOR INTEGER/NUMERIC COLUMNS (like year, month, id, quantity):

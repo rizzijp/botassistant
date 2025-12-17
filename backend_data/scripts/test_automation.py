@@ -1,7 +1,6 @@
 import requests
 import pandas as pd
 import time
-import json
 from datetime import datetime
 
 # --- CONFIGURACIÓN ---
@@ -15,6 +14,56 @@ TEST_CASES = [
     "Hola",
     "Buenos dias",
     "Que tal",
+
+    # --- GRUPO B: RRHH (Reglas) ---
+    "Salario de Javier Torres",
+    "Cuanto gana Sofia Ruiz",
+    "Puesto de Andrea Reyes",
+    "Cargo de Diego Herrera",
+    "Quien es Carlos Perez",
+    "Datos de Lucia Castillo",
+    "Top 5 salarios",
+    "Los 3 empleados con mayor sueldo",
+
+    # --- GRUPO C: CLIENTES (Reglas) ---
+    "Cliente Roberto Rivas",
+    "Datos del cliente Marina Garcia",
+    "Contacto de Luis Lopez",
+    "Buscar cliente Andrea Santos",
+
+    # --- GRUPO D: PRECIOS (Reglas) ---
+    "Precio del Monitor Moderno",
+    "Cuanto cuesta el Smartphone Slim",
+    "Valor de la Silla Vintage",
+    "Precio de zapatillas",
+    "Cuanto cuesta el mouse",
+
+    # --- GRUPO E: KPIs DE VENTAS (Reglas) ---
+    "Ventas por canal",
+    "Ventas online",
+    "Ventas por metodo de pago",
+    "Como pagan mas los clientes",
+    "Ventas por categoria",
+    "Rendimiento por categoria",
+    "Ventas por region",
+    "Ventas por zona",
+    "Ventas totales", # ¡Esta es crítica que salga con Regla!
+    "Cuanto vendimos en total",
+
+    # --- GRUPO F: RANKINGS PRODUCTOS (Reglas) ---
+    "Top 5 productos mas vendidos",
+    "Cuales son los 10 productos que mas salen",
+    "Top 5 productos",
+    "Los 3 mejores productos",
+
+    # --- GRUPO G: FECHAS SIMPLES (Reglas) ---
+    "Ventas 2024",
+    "Ingresos 2023",
+
+    # --- GRUPO H: BÚSQUEDA GENÉRICA (Reglas - Fallback) ---
+    "Ventas de monitores",
+    "Como va la zona Norte",
+    "Ingresos de laptops",
 
     # --- GRUPO I: COMPLEJOS PARA IA (LLM - No deberían tener la marca) ---
     "Ventas de monitores en enero 2024",
@@ -71,19 +120,11 @@ for i, question in enumerate(TEST_CASES):
                 "rows": rows,
                 "time_sec": round(elapsed, 2),
                 "sql_snippet": sql[:50].replace("\n", " ") + "...",
-                "sql_full": sql,  # Full SQL, not truncated
-                "viz_type": data.get("tipo_grafica", "N/A"),
-                "viz_title": viz,
-                "tiene_grafica": data.get("tiene_grafica", False),
-                "mensaje": data.get("mensaje", ""),
-                "total_filas": data.get("total_filas", 0),
-                "columnas": ",".join(data.get("columnas", [])),
-                # Save full JSON for debugging
-                "response_json": json.dumps(data)
+                "viz_title": viz
             })
         else:
-            print(f"❌ Error {response.status_code}: {response.text[:500]}")
-            results.append({"question": question, "status": f"ERROR {response.status_code}", "engine": "ERROR", "rows": 0, "response_json": response.text})
+            print(f"❌ Error {response.status_code}")
+            results.append({"question": question, "status": "ERROR", "engine": "ERROR", "rows": 0})
 
     except Exception as e:
         print(f"❌ Excepción: {e}")
