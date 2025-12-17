@@ -9,6 +9,15 @@ tables:
       - name: sale_id
         type: integer
         description: "ID único de la venta."
+      - name: product_id
+        type: integer
+        description: "Foreign key to products table."
+      - name: customer_id
+        type: integer
+        description: "Foreign key to customers table."
+      - name: employee_id
+        type: integer
+        description: "Foreign key to employees table."
       - name: sale_timestamp
         type: timestamp
         description: "Marca de tiempo completa de la venta."

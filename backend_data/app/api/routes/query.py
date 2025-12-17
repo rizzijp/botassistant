@@ -25,7 +25,6 @@ from app.api.services.response_builder import (
     _determine_has_graph,
     _log_audit
 )
-from app.api.services.sql_debugger import fix_sql_with_llm
 
 
 router = APIRouter()
@@ -178,35 +177,9 @@ def _try_llm_engine(request, start_time, background_tasks) -> QueryResponse:
     logger.info(f"SQL Generado: {generated_sql}")
 
     # PASO C: Seguridad y Ejecución en Base de Datos (Acceso a Datos)
-    # --- BLOQUE DE EJECUCIÓN CON SELF-HEALING (Refactorizado) ---
-    try:
-        # Intento 1: Ejecución normal
-        # El LLM no usa params externos, pasamos None
-        logger.info(f"   🏗️ [EXECUTE] Intento 1: Ejecución normal")
-        df = _execute_sql_safe(generated_sql, params=None)
-    except Exception as e:
-        error_msg = str(e)
+    # El LLM no usa params externos, pasamos None
+    df = _execute_sql_safe(generated_sql, params=None)
     
-    # Si es un error de seguridad (DROP, DELETE), NO reparamos. Abortamos.
-        if "SECURITY" in error_msg:
-            raise e
-    
-    # Si es error de SQL (sintaxis/columnas), llamamos al Agente Debugger
-        logger.info(f"   🔧 Fallo SQL. Llamando al agente SQL Debugger...")
-    
-    # 1. El Agente intenta arreglarlo
-        fixed_sql = fix_sql_with_llm(generated_sql, error_msg, model_to_use)
-        logger.info(f"   ✨ SQL Reparado: {fixed_sql}")
-    
-    # 2. Reintentamos con la cura
-        try:
-            generated_sql = fixed_sql # Actualizamos para que salga bien en el log/respuesta
-            df = _execute_sql_safe(fixed_sql, params=None)
-            logger.info("   ✅ Reparación exitosa. Query ejecutada.")
-        except Exception as e2:
-            logger.error("   ❌ La reparación falló.")
-            raise e2 # Lanzamos el error original al usuario
-
     row_count = len(df)
     elapsed = round(time.time() - start_time, 4)
     # Generación de respuesta (AHORA CON IA)
