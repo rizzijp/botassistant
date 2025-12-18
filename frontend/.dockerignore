@@ -1,0 +1,7 @@
+__pycache__
+*.pyc
+.git
+.env
+front_test1.py
+front_test2.py
+front_test3.py

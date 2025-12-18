@@ -5,6 +5,7 @@ import plotly.express as px
 import re
 import os
 import uuid
+import streamlit.components.v1 as components
 
 # --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(
@@ -15,11 +16,8 @@ st.set_page_config(
 )
 
 # --- VARIABLES DE ENTORNO ---
-# IMPORTANTE: Cambia esta URL por la URL real de tu proyecto en Render
-# Debe terminar en /api/ask
+#DEFAULT_API_URL = "http://127.0.0.1:8000/api/ask" 
 DEFAULT_API_URL = "https://botassistant-api.onrender.com/api/ask" 
-
-# Intenta leer de variable de entorno, si no usa la default
 API_URL = os.getenv("BACKEND_URL", DEFAULT_API_URL)
 DEFAULT_USER_ID = 999 
 
@@ -27,46 +25,71 @@ DEFAULT_USER_ID = 999
 if "session_id" not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())
 
-# --- ESTILOS CSS (FIX SCROLL) ---
+# --- CSS: OPTIMIZACIÓN PARA LAPTOP 13" (NO SCROLL) ---
 st.markdown("""
     <style>
-    /* 1. Ocultar elementos de Streamlit */
+    /* 1. Eliminar Headers/Footers y Padding excesivo */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
-
-    /* 2. Layout Principal */
+    
+    /* Padding mínimo para aprovechar cada pixel de la pantalla */
     .block-container {
-        padding-top: 1rem;
-        padding-bottom: 5rem;
+        padding-top: 1rem !important;
+        padding-bottom: 0rem !important;
+        padding-left: 2rem !important;
+        padding-right: 2rem !important;
+        max-width: 100%;
     }
 
-    /* 3. Input Flotante */
+    /* 2. Input Flotante Compacto */
     .stChatInput {
         position: fixed !important;
-        bottom: 0px !important;
-        right: 20px !important;
-        width: 24% !important;
-        z-index: 999 !important;
+        bottom: 10px !important;
+        right: 2rem !important;
+        width: 23% !important; /* Ajustado al ancho de la columna derecha */
+        z-index: 1000 !important;
         background-color: white;
-    }
-
-    /* 4. Métricas y Tablas */
-    .stMetric {
-        background-color: #f9f9f9;
-        border: 1px solid #e0e0e0;
-        border-radius: 5px;
-        padding: 10px;
-        text-align: center;
+        padding-bottom: 0px !important;
     }
     
-    /* 5. Separador vertical */
+    /* Ajuste para que el input no se vea gigante */
+    .stChatInput input {
+        font-size: 14px !important;
+        padding: 8px !important;
+    }
+
+    /* 3. Métricas Compactas */
+    div[data-testid="stMetricValue"] {
+        font-size: 1.5rem !important; /* Números más pequeños */
+    }
+    
+    /* 4. Separador vertical sutil */
     [data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] > [data-testid="stVerticalBlock"] {
-        border-left: 1px solid #ddd;
+        border-left: 1px solid #eee;
         padding-left: 1rem;
     }
     </style>
 """, unsafe_allow_html=True)
+
+# --- JAVASCRIPT: AUTO-SCROLL ---
+def scroll_to_bottom():
+    js = f"""
+    <script>
+        function scrollDown() {{
+            var chatContainer = window.parent.document.querySelector('.stChatMessageContainer');
+            if (chatContainer) {{
+                var scrollers = window.parent.document.querySelectorAll('.stVerticalBlockBorderWrapper');
+                if (scrollers.length > 0) {{
+                    var lastScroller = scrollers[scrollers.length - 1];
+                    lastScroller.scrollTop = lastScroller.scrollHeight; 
+                }}
+            }}
+        }}
+        setTimeout(scrollDown, 300);
+    </script>
+    """
+    components.html(js, height=0, width=0)
 
 # --- ESTADO ---
 if "messages" not in st.session_state:
@@ -80,143 +103,161 @@ if "current_viz_type" not in st.session_state:
 def format_sql_query(sql_text):
     if not sql_text: return ""
     keywords = ["SELECT", "FROM", "JOIN", "LEFT JOIN", "RIGHT JOIN", "INNER JOIN", 
-                "WHERE", "GROUP BY", "ORDER BY", "HAVING", "LIMIT"]
+                "WHERE", "GROUP BY", "ORDER BY", "HAVING", "LIMIT", "AND", "OR"]
     formatted_sql = sql_text
     for kw in keywords:
         pattern = re.compile(f"\\b{kw}\\b", re.IGNORECASE)
         formatted_sql = pattern.sub(f"\n{kw.upper()}", formatted_sql)
     return formatted_sql.strip()
 
-def get_api_response(message_text):
-    # ADAPTACIÓN: El backend espera 'message', 'session_id', 'user_id', 'model'
+# AHORA ACEPTA MODEL_NAME
+def get_api_response(message_text, model_name):
     payload = {
         "user_id": DEFAULT_USER_ID,
         "session_id": st.session_state.session_id,
-        "message": message_text,  # Antes era 'question'
-        "model": "llama-3"       # Opcional, pero recomendado enviar
+        "message": message_text,
+        "model": model_name 
     }
-    
     try:
         response = requests.post(API_URL, json=payload)
-        response.raise_for_status()
-        return response.json()
+        try:
+            return response.json()
+        except:
+            response.raise_for_status()
+            return {"error": "Error sin respuesta JSON"}
     except Exception as e:
         return {"error": str(e)}
 
 def render_visualization(data, viz_type, title, columns):
     df = pd.DataFrame(data)
     
+    VIZ_HEIGHT = 450 
+
     if df.empty:
-        st.info("La consulta no retornó datos numéricos para graficar.")
+        st.info("Sin datos numéricos.")
         return
 
-    # Limpieza tipos
     for col in df.columns:
         try: df[col] = pd.to_numeric(df[col])
         except: pass
 
-    # Definición de Ejes
-    # Si el backend nos da columnas explícitas, las usamos
     x_col = columns[0] if columns else df.columns[0]
     y_col = columns[-1] if columns else df.columns[-1]
-    
-    # Si solo hay 1 columna, no podemos hacer X vs Y, duplicamos
-    if len(df.columns) > 1 and x_col == y_col: 
-        y_col = df.columns[1]
+    if len(df.columns) > 1 and x_col == y_col: y_col = df.columns[1]
 
-    # Ordenar tiempo si detectamos columnas de fecha
-    if x_col in ['year', 'month', 'day', 'sale_timestamp', 'sale_date']:
-        try:
-            df = df.sort_values(by=x_col, ascending=True)
-        except:
-            pass
+    if x_col in ['year', 'month', 'day', 'sale_timestamp', 'sale_date', 'dia']:
+        try: df = df.sort_values(by=x_col, ascending=True)
+        except: pass
 
     try:
         if viz_type == "number":
             c1, c2, c3 = st.columns([1,2,1])
             with c2:
-                # Tomamos el primer valor de la primera columna numérica que encontremos
                 val = df.iloc[0][y_col] if not df.empty else 0
                 st.metric(label="Resultado", value=f"{val:,.2f}" if isinstance(val, (int, float)) else str(val))
         
         elif viz_type == "table":
-            st.dataframe(df.style.format(precision=2), use_container_width=True, height=500)
+            st.dataframe(df.style.format(precision=2), use_container_width=True, height=VIZ_HEIGHT)
         
         elif viz_type == "bar":
             fig = px.bar(df, x=x_col, y=y_col, title=title, text_auto='.2s')
+            fig.update_layout(margin=dict(l=20, r=20, t=40, b=20), height=VIZ_HEIGHT)
             st.plotly_chart(fig, use_container_width=True)
         
         elif viz_type == "line":
             fig = px.line(df, x=x_col, y=y_col, title=title, markers=True)
+            fig.update_layout(margin=dict(l=20, r=20, t=40, b=20), height=VIZ_HEIGHT)
             st.plotly_chart(fig, use_container_width=True)
         
         elif viz_type == "pie":
             if len(df.columns) >= 2:
                 fig = px.pie(df, names=x_col, values=y_col, title=title)
+                fig.update_layout(margin=dict(l=20, r=20, t=40, b=20), height=VIZ_HEIGHT)
                 st.plotly_chart(fig, use_container_width=True)
             else: 
-                st.warning("Datos insuficientes para Pie chart.")
+                st.warning("Datos insuficientes.")
         else:
-            st.dataframe(df)
+            st.dataframe(df, height=VIZ_HEIGHT)
             
     except Exception as e:
-        st.error(f"Error visualizando datos: {e}")
+        st.error(f"Error visual: {e}")
 
-# --- LAYOUT ---
+# --- LAYOUT PRINCIPAL (75% Viz - 25% Chat) ---
 col_viz, col_chat = st.columns([3, 1])
 
-# COLUMNA DERECHA: CHAT
+# --- COLUMNA DERECHA: CHAT ---
 with col_chat:
-    st.subheader("💬 Chat")
+    # 1. Cabecera y Selector en línea
+    c_head, c_sel = st.columns([1, 1])
     
-    chat_container = st.container(height=600)
+    with c_head:
+        st.markdown("#### 💬 Chat")
+        
+    with c_sel:
+        # SELECTOR DE MODELO VISIBLE
+        selected_model = st.selectbox(
+            "Modelo IA", 
+            options=["llama-3", "llama-fast"],
+            index=0,
+            label_visibility="collapsed",
+            help="Elige entre precisión (llama-3) o velocidad (llama-fast)"
+        )
+
+    # Caption informativo
+    if selected_model == "llama-3":
+        st.caption("🧠 Modelo: Llama-3 (70b) - Más preciso")
+    else:
+        st.caption("⚡ Modelo: Llama-Fast (8b) - Más rápido")
+    
+    # 📏 ALTURA FIJA REAJUSTADA (500px)
+    chat_container = st.container(height=500)
     
     with chat_container:
         if not st.session_state.messages:
-            st.info("¡Hola! Pregúntame sobre ventas, empleados o productos.")
+            st.info(f"¡Hola! Estoy usando **{selected_model}**. Pregunta sobre tus datos.")
         
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
         
-        # Espacio para evitar superposición con input
-        st.markdown('<div style="height: 100px;"></div>', unsafe_allow_html=True)
+        st.markdown('<div style="height: 50px;"></div>', unsafe_allow_html=True)
 
-# COLUMNA IZQUIERDA: VISUALIZACIÓN
+# --- COLUMNA IZQUIERDA: VISUALIZACIÓN ---
 with col_viz:
     if st.session_state.latest_response:
         resp = st.session_state.latest_response
         
-        # Título y Selector
-        c1, c2 = st.columns([3, 1])
+        # Header Compacto
+        c1, c2 = st.columns([4, 1])
         with c1: 
-            st.title("Resultados")
-        with c2: 
-            # Permitir cambiar el gráfico manualmente
-            # Mapeamos 'tipo_grafica' del backend a los tipos de Streamlit
-            backend_viz = resp.get("tipo_grafica", "table")
-            if backend_viz not in ["table", "bar", "line", "pie", "number"]:
-                backend_viz = "table"
+            st.markdown(f"### {resp.get('viz_title', 'Resultados')}")
+            with c2: 
+                opciones_validas = ["table", "bar", "line", "pie", "number"]
                 
-            # Sincronizamos estado
-            if st.session_state.current_viz_type is None:
-                st.session_state.current_viz_type = backend_viz
+                # 1. Recuperar tipo del backend, si viene "text" o nulo, forzamos a "table"
+                backend_viz = resp.get("tipo_grafica", "table")
+                if backend_viz not in opciones_validas:
+                    backend_viz = "table"
 
-            new_viz = st.selectbox(
-                "Gráfico", 
-                ["table", "bar", "line", "pie", "number"], 
-                index=["table", "bar", "line", "pie", "number"].index(st.session_state.current_viz_type),
-                label_visibility="collapsed"
-            )
-            
-            if new_viz != st.session_state.current_viz_type:
-                st.session_state.current_viz_type = new_viz
-                st.rerun()
+                # 2. Saneamiento del estado
+                if st.session_state.current_viz_type is None or st.session_state.current_viz_type not in opciones_validas:
+                    st.session_state.current_viz_type = backend_viz
+
+                # 3. Selector seguro
+                new_viz = st.selectbox(
+                    "Vista", 
+                    opciones_validas, 
+                    index=opciones_validas.index(st.session_state.current_viz_type),
+                    label_visibility="collapsed",
+                    key="viz_selector_main_unique"
+                )
+                
+                # 4. Actualizar estado
+                if new_viz != st.session_state.current_viz_type:
+                    st.session_state.current_viz_type = new_viz
+                    st.rerun()
         
-        st.divider()
-        
-        # Renderizado Principal
-        # ADAPTACIÓN: Claves del backend ('datos', 'columnas')
+        # Renderizado
         render_visualization(
             resp.get("datos", []), 
             st.session_state.current_viz_type, 
@@ -224,38 +265,35 @@ with col_viz:
             resp.get("columnas", [])
         )
         
-        st.write("")
-        # ADAPTACIÓN: Clave backend 'sql_generado'
+        # Expander para SQL
         sql_gen = resp.get("sql_generado")
         if sql_gen:
-            with st.expander("🛠️ Ver SQL Generado"):
+            with st.expander("🛠️ SQL", expanded=False):
                 st.code(format_sql_query(sql_gen), language="sql")
     else:
-        st.markdown("<h3 style='text-align: center; margin-top: 20%; color: #aaa;'>⬅️ Escribe tu consulta a la derecha para ver los datos</h3>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align: center; margin-top: 150px; color: #ccc;'><h1>📊</h1><h3>Tu Data Dashboard</h3></div>", unsafe_allow_html=True)
 
-# INPUT FLOTANTE
-prompt = st.chat_input("Ej: Ventas totales por categoria...")
+# --- INPUT (FIXED BOTTOM RIGHT) ---
+prompt = st.chat_input("Escribe tu consulta...")
 
 if prompt:
-    # 1. Mostrar mensaje usuario
     st.session_state.messages.append({"role": "user", "content": prompt})
     
-    # 2. Llamada a API
-    with st.spinner("Analizando datos..."):
-        resp = get_api_response(prompt)
+    # Pasamos el modelo seleccionado a la API
+    with st.spinner(f"Consultando a {selected_model}..."):
+        resp = get_api_response(prompt, selected_model)
     
-    # 3. Procesar Respuesta
-    if resp and "error" not in resp:
+    if resp:
         st.session_state.latest_response = resp
-        # Actualizamos el tipo de gráfica con lo que diga el backend
         st.session_state.current_viz_type = resp.get("tipo_grafica", "table")
         
-        # Mensaje del Asistente (Viene del backend en el campo 'mensaje')
-        bot_msg = resp.get("mensaje", "Aquí tienes los datos.")
+        bot_msg = resp.get("mensaje") 
+        if not bot_msg: bot_msg = "Datos recibidos."
         
         st.session_state.messages.append({"role": "assistant", "content": bot_msg})
     else:
-        err = resp.get("error", "Error desconocido") if resp else "Sin conexión"
-        st.session_state.messages.append({"role": "assistant", "content": f"❌ Error: {err}"})
-        
+        st.session_state.messages.append({"role": "assistant", "content": "❌ Error de conexión."})
+    
+    scroll_to_bottom()
+    
     st.rerun()
