@@ -121,12 +121,29 @@ def compile_sql(query_plan: QueryPlan) -> str:
     if where_conditions:
         where_clause = "WHERE " + " AND ".join(where_conditions)
 
-    # 4. CONSTRUIR GROUP BY
+    # 4. CONSTRUIR GROUP BY (CORREGIDO)
     # ---------------------------------------------------------
+    # Corrección: Incluimos en el GROUP BY las métricas que no sean agregaciones (ej: unit_price)
     group_by_clause = ""
-    if metrics_sql and dims_clean:
-        indices = [str(i+1) for i in range(len(dims_clean))]
-        group_by_clause = f"GROUP BY {', '.join(indices)}"
+    
+    # Recopilamos índices de todas las columnas que NO tienen agregación
+    group_indices = []
+    
+    # 1. Las dimensiones siempre se agrupan (Índices 1 a N)
+    for i in range(len(dims_clean)):
+        group_indices.append(str(i + 1))
+        
+    # 2. Las métricas SIN agregación (SUM, AVG...) también deben agruparse
+    offset = len(dims_clean)
+    for i, m in enumerate(metrics_sql):
+        # Si NO tiene SUM(, AVG(, COUNT(, etc... entonces es una columna cruda (ej: unit_price)
+        is_aggregate = any(agg in m.upper() for agg in ["SUM(", "AVG(", "COUNT(", "MAX(", "MIN("])
+        if not is_aggregate:
+            # Añadimos su índice posicional
+            group_indices.append(str(offset + i + 1))
+
+    if group_indices:
+        group_by_clause = f"GROUP BY {', '.join(group_indices)}"
 
     # 5. CONSTRUIR ORDER BY (Lógica Temporal Inteligente)
     # ---------------------------------------------------------

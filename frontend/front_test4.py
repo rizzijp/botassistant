@@ -16,8 +16,8 @@ st.set_page_config(
 )
 
 # --- VARIABLES DE ENTORNO ---
-#DEFAULT_API_URL = "http://127.0.0.1:8000/api/ask" 
-DEFAULT_API_URL = "https://botassistant-api.onrender.com/api/ask" 
+DEFAULT_API_URL = "http://127.0.0.1:8000/api/ask" 
+#DEFAULT_API_URL = "https://botassistant-api.onrender.com/api/ask" 
 API_URL = os.getenv("BACKEND_URL", DEFAULT_API_URL)
 DEFAULT_USER_ID = 999 
 
@@ -73,24 +73,19 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- JAVASCRIPT: AUTO-SCROLL ---
-# Este script fuerza el scroll hacia abajo en los contenedores de chat
 def scroll_to_bottom():
     js = f"""
     <script>
         function scrollDown() {{
             var chatContainer = window.parent.document.querySelector('.stChatMessageContainer');
             if (chatContainer) {{
-                // Opción 1: Scroll al final del contenedor padre (si usas st.container)
                 var scrollers = window.parent.document.querySelectorAll('.stVerticalBlockBorderWrapper');
-                // Buscamos el último contenedor con scroll (el del chat)
                 if (scrollers.length > 0) {{
                     var lastScroller = scrollers[scrollers.length - 1];
-                    // Forzamos el scroll al fondo
                     lastScroller.scrollTop = lastScroller.scrollHeight; 
                 }}
             }}
         }}
-        // Ejecutar con un pequeño delay para asegurar que el DOM cargó
         setTimeout(scrollDown, 300);
     </script>
     """
@@ -115,12 +110,13 @@ def format_sql_query(sql_text):
         formatted_sql = pattern.sub(f"\n{kw.upper()}", formatted_sql)
     return formatted_sql.strip()
 
-def get_api_response(message_text):
+# AHORA ACEPTA MODEL_NAME
+def get_api_response(message_text, model_name):
     payload = {
         "user_id": DEFAULT_USER_ID,
         "session_id": st.session_state.session_id,
         "message": message_text,
-        "model": "llama-3" 
+        "model": model_name 
     }
     try:
         response = requests.post(API_URL, json=payload)
@@ -135,7 +131,6 @@ def get_api_response(message_text):
 def render_visualization(data, viz_type, title, columns):
     df = pd.DataFrame(data)
     
-    # Altura fija para que no empuje el layout hacia abajo
     VIZ_HEIGHT = 450 
 
     if df.empty:
@@ -162,12 +157,10 @@ def render_visualization(data, viz_type, title, columns):
                 st.metric(label="Resultado", value=f"{val:,.2f}" if isinstance(val, (int, float)) else str(val))
         
         elif viz_type == "table":
-            # Dataframe con altura fija para evitar scroll de página
             st.dataframe(df.style.format(precision=2), use_container_width=True, height=VIZ_HEIGHT)
         
         elif viz_type == "bar":
             fig = px.bar(df, x=x_col, y=y_col, title=title, text_auto='.2s')
-            # Margenes ajustados para plotly
             fig.update_layout(margin=dict(l=20, r=20, t=40, b=20), height=VIZ_HEIGHT)
             st.plotly_chart(fig, use_container_width=True)
         
@@ -194,21 +187,39 @@ col_viz, col_chat = st.columns([3, 1])
 
 # --- COLUMNA DERECHA: CHAT ---
 with col_chat:
-    st.markdown("#### 💬 Chat")
+    # 1. Cabecera y Selector en línea
+    c_head, c_sel = st.columns([1, 1])
     
-    # 📏 ALTURA FIJA PARA 13 PULGADAS (550px)
-    # Esto asegura que el chat tenga su propio scroll y no scrollee toda la página
-    chat_container = st.container(height=550)
+    with c_head:
+        st.markdown("#### 💬 Chat")
+        
+    with c_sel:
+        # SELECTOR DE MODELO VISIBLE
+        selected_model = st.selectbox(
+            "Modelo IA", 
+            options=["llama-3", "llama-fast"],
+            index=0,
+            label_visibility="collapsed",
+            help="Elige entre precisión (llama-3) o velocidad (llama-fast)"
+        )
+
+    # Caption informativo
+    if selected_model == "llama-3":
+        st.caption("🧠 Modelo: Llama-3 (70b) - Más preciso")
+    else:
+        st.caption("⚡ Modelo: Llama-Fast (8b) - Más rápido")
+    
+    # 📏 ALTURA FIJA REAJUSTADA (500px)
+    chat_container = st.container(height=500)
     
     with chat_container:
         if not st.session_state.messages:
-            st.info("¡Hola! Pregunta sobre tus datos.")
+            st.info(f"¡Hola! Estoy usando **{selected_model}**. Pregunta sobre tus datos.")
         
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
         
-        # Espacio invisible al final para que el input no tape el último mensaje
         st.markdown('<div style="height: 50px;"></div>', unsafe_allow_html=True)
 
 # --- COLUMNA IZQUIERDA: VISUALIZACIÓN ---
@@ -219,7 +230,6 @@ with col_viz:
         # Header Compacto
         c1, c2 = st.columns([4, 1])
         with c1: 
-            # Título pequeño
             st.markdown(f"### {resp.get('viz_title', 'Resultados')}")
             with c2: 
                 opciones_validas = ["table", "bar", "line", "pie", "number"]
@@ -229,20 +239,20 @@ with col_viz:
                 if backend_viz not in opciones_validas:
                     backend_viz = "table"
 
-                # 2. Saneamiento del estado (session_state)
+                # 2. Saneamiento del estado
                 if st.session_state.current_viz_type is None or st.session_state.current_viz_type not in opciones_validas:
                     st.session_state.current_viz_type = backend_viz
 
-                # 3. Renderizar el selector con una clave FIJA y segura
+                # 3. Selector seguro
                 new_viz = st.selectbox(
                     "Vista", 
                     opciones_validas, 
                     index=opciones_validas.index(st.session_state.current_viz_type),
                     label_visibility="collapsed",
-                    key="viz_selector_main_unique" # <--- CAMBIO AQUÍ: Usamos un nombre fijo simple
+                    key="viz_selector_main_unique"
                 )
                 
-                # 4. Actualizar estado si cambia manualmente
+                # 4. Actualizar estado
                 if new_viz != st.session_state.current_viz_type:
                     st.session_state.current_viz_type = new_viz
                     st.rerun()
@@ -255,7 +265,7 @@ with col_viz:
             resp.get("columnas", [])
         )
         
-        # Expander para SQL (Compacto)
+        # Expander para SQL
         sql_gen = resp.get("sql_generado")
         if sql_gen:
             with st.expander("🛠️ SQL", expanded=False):
@@ -269,8 +279,9 @@ prompt = st.chat_input("Escribe tu consulta...")
 if prompt:
     st.session_state.messages.append({"role": "user", "content": prompt})
     
-    with st.spinner("..."):
-        resp = get_api_response(prompt)
+    # Pasamos el modelo seleccionado a la API
+    with st.spinner(f"Consultando a {selected_model}..."):
+        resp = get_api_response(prompt, selected_model)
     
     if resp:
         st.session_state.latest_response = resp
@@ -283,7 +294,6 @@ if prompt:
     else:
         st.session_state.messages.append({"role": "assistant", "content": "❌ Error de conexión."})
     
-    # 🔥 MAGIA: Forzar scroll al final después de responder
     scroll_to_bottom()
     
     st.rerun()

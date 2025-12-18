@@ -85,7 +85,7 @@ RULES_CATALOG = [
             "viz_type": "table",
             "viz_title": "Ficha de Empleado: {captured}"
         },
-        "params_mapper": lambda captured: f"%{captured}%"
+        "params_mapper": lambda captured: f"%{captured.strip().replace(' ', '%')}%"
     },
     {
         "patterns": [

@@ -30,8 +30,12 @@ from app.api.services.response_builder import (
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+
 def _try_rules_engine(request, start_time, background_tasks) -> Optional[QueryResponse]:
-    """Attempt fast path via rules engine."""
+    """
+    Intenta resolver la consulta usando reglas predefinidas (Fast Path).
+    Si la regla no devuelve datos, retorna None para permitir que el LLM intente resolverlo.
+    """
     rule_hit = check_rules(request.message)
     if not rule_hit:
         return None
@@ -40,19 +44,17 @@ def _try_rules_engine(request, start_time, background_tasks) -> Optional[QueryRe
 
     # Preparar datos candidatos
     sql_candidate = rule_hit["sql"]
-    params_candidate = rule_hit.get("params", {}) # <--- Capturamos los params (:p1)
+    params_candidate = rule_hit.get("params", {}) 
     viz_type_candidate = rule_hit["viz_type"]
     viz_title_candidate = rule_hit["viz_title"]
 
-    # --- CORRECCIÓN AQUÍ: Manejo de reglas sin SQL (Saludos) ---
+    # CASO 1: Respuestas estáticas sin SQL (Saludos, Ayuda) -> SE ACEPTAN SIEMPRE
     if sql_candidate is None:
         logger.info(f"    ✅ [RULES SUCCESS] Respuesta estática (sin SQL).")
         elapsed = round(time.time() - start_time, 4)
-        
-        # Retorno directo sin tocar la BD
         return _build_response(
             request=request,
-            df=pd.DataFrame(), # DataFrame vacío
+            df=pd.DataFrame(),
             sql=None,
             viz_type=viz_type_candidate,
             viz_title=viz_title_candidate,
@@ -62,42 +64,57 @@ def _try_rules_engine(request, start_time, background_tasks) -> Optional[QueryRe
             grafica_base64=None
         )
     
-    # Ejecutamos (Helper encapsula seguridad y conexión)
-    df = _execute_sql_safe(sql_candidate, params_candidate)
-    
-    # Auditoría Exito Reglas
-    logger.info(f"   ✅ [RULES SUCCESS] Consulta resuelta por reglas.")
-    row_count = len(df)
-    elapsed = round(time.time() - start_time, 4)
-    
-    # MENSAJE ESTÁTICO (Rules = Velocidad)
-    mensaje_final = _generate_success_message_static(df, viz_type_candidate, viz_title_candidate)
-    tiene_grafica_bool = _determine_has_graph(viz_type_candidate, row_count)
+    # CASO 2: Reglas con SQL (Consultas de datos)
+    try:
+        logger.info(f"   📜 [RULES SQL EXEC]: {sql_candidate} | Params: {params_candidate}")
+        
+        # Ejecutamos la consulta
+        df = _execute_sql_safe(sql_candidate, params_candidate)
+        
+        # --- LÓGICA DE FALLBACK ---
+        # Si la consulta se ejecutó bien pero volvió VACÍA (0 filas),
+        # asumimos que la regla fue muy estricta y dejamos que el LLM pruebe suerte.
+        if df.empty:
+            logger.warning(f"   ⚠️ [RULES SKIP] La regla '{viz_title_candidate}' no trajo datos. Pasando al LLM.")
+            return None 
+        # --------------------------
 
-    _log_audit(
-        bg_tasks=background_tasks,
-        req=request,
-        sql=sql_candidate,
-        model_used="rules_engine",
-        rows=row_count,
-        time_taken=elapsed,
-        viz=viz_type_candidate,
-        error=None,
-        tiene_grafica=tiene_grafica_bool
-    )
-    
-    # RETORNO ANTICIPADO: Si esto funciona, NO ejecuta el LLM.
-    return _build_response(
-        request=request,
-        df=df,
-        sql=sql_candidate,
-        viz_type=viz_type_candidate,
-        elapsed=elapsed,
-        message=mensaje_final,
-        tiene_grafica=tiene_grafica_bool,
-        viz_title=viz_title_candidate,
-        grafica_base64=None
-    )
+        # Si hay datos, procesamos el éxito
+        logger.info(f"   ✅ [RULES SUCCESS] Consulta resuelta por reglas.")
+        row_count = len(df)
+        elapsed = round(time.time() - start_time, 4)
+        
+        mensaje_final = _generate_success_message_static(df, viz_type_candidate, viz_title_candidate)
+        tiene_grafica_bool = _determine_has_graph(viz_type_candidate, row_count)
+
+        _log_audit(
+            bg_tasks=background_tasks,
+            req=request,
+            sql=sql_candidate,
+            model_used="rules_engine",
+            rows=row_count,
+            time_taken=elapsed,
+            viz=viz_type_candidate,
+            error=None,
+            tiene_grafica=tiene_grafica_bool
+        )
+        
+        return _build_response(
+            request=request,
+            df=df,
+            sql=sql_candidate,
+            viz_type=viz_type_candidate,
+            elapsed=elapsed,
+            message=mensaje_final,
+            tiene_grafica=tiene_grafica_bool,
+            viz_title=viz_title_candidate,
+            grafica_base64=None
+        )
+        
+    except Exception as e:
+        # Si el SQL de la regla tenía un error de sintaxis, también pasamos al LLM
+        logger.error(f"   ❌ [RULES ERROR] Falló la ejecución de la regla: {e}. Pasando al LLM.")
+        return None
 
 def _try_llm_engine(request, start_time, background_tasks) -> QueryResponse:
     """Fallback to LLM query planning."""
