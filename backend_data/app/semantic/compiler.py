@@ -189,7 +189,7 @@ def _build_where_clauses(filters, default_table):
 
     for f in filters:
         col = f.column
-        op = f.operator.strip("',\" ")
+        op = f.operator.strip("',\" ").upper()
         val = f.value
 
         # --- Traducción de Fechas ---
@@ -199,7 +199,18 @@ def _build_where_clauses(filters, default_table):
             clauses.append(f"EXTRACT(MONTH FROM {REAL_DATE_COL}) {op} {val}")
         elif op == "MONTH":
             clauses.append(f"EXTRACT(MONTH FROM {REAL_DATE_COL}) IN ({val})")
-        
+        # --- Traducción de Comparaciones ---
+        elif op == "ILIKE_ANY":
+            # Convierte "zapatillas, monitores" en -> (unaccent(col) ILIKE ... OR ...)
+            terms = [t.strip() for t in val.split(",")]
+            or_conditions = []
+            for term in terms:
+                clean_term = term.replace("%", "")
+                or_conditions.append(f"unaccent({col}) ILIKE unaccent('%%{clean_term}%%')")
+            
+            # Unimos con OR y envolvemos en paréntesis
+            if or_conditions:
+                clauses.append(f"({' OR '.join(or_conditions)})")
         else:
             # --- Manejo de Valores (Strings vs Subqueries) ---
             final_val = val

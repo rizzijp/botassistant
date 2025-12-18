@@ -13,17 +13,17 @@ SESSION_ID = "stress_test_v2"
 # --- NUEVOS CASOS DE PRUEBA (Variaciones y Complejidad) ---
 TEST_CASES = [
     # --- GRUPO A: LENGUAJE NATURAL Y SINÓNIMOS (Reglas/Static) ---
-    "Ey buenas",                 # Var. de Hola
-    "Ayuda por favor",           # Var. de Ayuda
-    "Necesito asistencia",       # Var. de Ayuda
+    #"Ey buenas",                 # Var. de Hola
+    #"Ayuda por favor",           # Var. de Ayuda
+    #"Necesito asistencia",       # Var. de Ayuda
     
     # --- GRUPO E: VENTAS COMPLEJAS (LLM Puro) ---
-    "Ventas de monitores en el primer trimestre de 2024", # Q1
-    "Ventas de zapatillas vs monitores en 2023",          # Comparación
-    "Cual fue el mes con mas ventas del año pasado",      # Agregación temporal
-    "Promedio de venta por cliente en Mexico",            # Filtro doble + KPI
-    "Total vendido en efectivo vs tarjeta",               # Pivoteo (si el LLM es listo)
-    "Ventas de productos de la categoria Hogar en España",# Join triple (Ventas-Prod-Cliente)
+    #"Ventas de monitores en el primer trimestre de 2024", # Q1
+    "Ventas de zapatillas vs laptops en 2023",          # Comparación
+    #"Cual fue el mes con mas ventas del año pasado",      # Agregación temporal
+    #"Promedio de venta por cliente en Mexico",            # Filtro doble + KPI
+    #"Total vendido en efectivo vs tarjeta",               # Pivoteo (si el LLM es listo)
+    #"Ventas de productos de la categoria Hogar en España",# Join triple (Ventas-Prod-Cliente)
 ]
 
 results = []

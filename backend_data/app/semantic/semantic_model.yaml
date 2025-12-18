@@ -32,16 +32,28 @@ tables:
     metrics:
       - name: total_sales
         sql: "SUM(total)"
-        description: "Suma total de dinero vendido."
+        description: "USAR PARA: 'Ventas totales', 'Ingresos', 'Facturación', 'Dinero generado'. Es la suma monetaria bruta."
       - name: total_quantity
         sql: "SUM(quantity)"
-        description: "Total de unidades (productos) vendidas."
+        description: "USAR PARA: 'Unidades vendidas', 'Cantidad de productos', 'Volumen de artículos'. Es el total de unidades (productos) vendidas."
       - name: count_sales
         sql: "COUNT(sale_id)"
-        description: "Número total de transacciones."
+        description: "USAR PARA: 'Número de ventas', 'Cantidad de transacciones', 'Frecuencia de compra'. Es el numero total de tickets emitidos. "
       - name: avg_ticket
         sql: "AVG(total)"
-        description: "Ticket promedio de venta."
+        description: "USAR PARA: 'Ticket promedio', 'Valor promedio de transacción'. ATENCIÓN: NO USAR para 'Promedio de ventas por día' (para eso, agrupar total_sales por fecha)."
+      - name: unique_customers
+        sql: "COUNT(DISTINCT customer_id)"
+        description: "USAR PARA: 'Cuántos clientes', 'Clientes únicos'. Cuenta personas distintas, no transacciones."
+      - name: unique_employees
+        sql: "COUNT(DISTINCT employee_id)"
+        description: "USAR PARA: 'Cuántos empleados', 'Empleados únicos'. Cuenta personas distintas, no transacciones."
+      - name: total_discounts
+        sql: "SUM(discount_amount)"
+        description: "Monto total de dinero descontado en las ventas."
+      - name: discount_rate
+        sql: "SUM(discount_amount) / NULLIF(SUM(total), 0)"
+        description: "Porcentaje o tasa de descuento aplicado (Ratio). Resultado en decimal."
 
   # --- DIMENSIONES ---
   - name: products
@@ -52,10 +64,10 @@ tables:
         type: integer
       - name: product_name
         type: text
-        description: "Nombre comercial del producto."
+        description: "Nombre comercial del producto. Contiene items específicos como 'Monitor Samsung', 'Zapatillas Nike', 'Laptop Dell', 'Teclado'."
       - name: category
         type: text
-        description: "Categoría (Electrónica, Hogar, etc.)."
+        description: "Contiene grupos de alto nivel como (Electrónica, Hogar, etc.)"
       - name: unit_price
         type: numeric
         description: "Precio unitario actual."
