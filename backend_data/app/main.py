@@ -7,10 +7,37 @@ from app.api.routes.health import router as health_router
 from app.api.routes.query import router as query_router
 from app.api.routes.audit import router as audit_router
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List, Optional, Any
+
+# 1. DEFINIMOS EL MODELO VISUAL (Para que Swagger sepa qué mostrar)
+class ErrorRespuesta(BaseModel):
+    exito: bool
+    session_id: Optional[str]
+    mensaje: str
+    sql_generado: Optional[str]
+    datos: List[Any]
+    columnas: List[str]
+    total_filas: int
+    tipo_grafica: Optional[str]
+    tiene_grafica: bool
+    grafica_base64: Optional[str]
 
 
 setup_logging()
-app = FastAPI(title="Desafio de Tripulaciones API", version="1.0")
+
+# 2. CONFIGURAMOS LA APP
+# Agregamos 'responses' para corregir la documentación visual del error 422
+app = FastAPI(
+    title="Desafio de Tripulaciones API", 
+    version="1.0",
+    responses={
+        422: {
+            "description": "Error de Validación",
+            "model": ErrorRespuesta
+        }
+    }
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -23,14 +50,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- 👇 AQUÍ AGREGAMOS EL MANEJADOR DE ERROR 422 PERSONALIZADO 👇 ---
+# --- MANEJADOR DE ERROR PERSONALIZADO ---
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """
     Intercepta los errores de validación (422) y devuelve el JSON
-    con el formato unificado del proyecto en lugar del estándar de FastAPI.
+    con el formato unificado del proyecto.
     """
-    # 1. Extraer los detalles del error para crear un mensaje legible
     errores_lista = []
     for error in exc.errors():
         # 'loc' indica dónde está el error (ej: body -> message)
@@ -40,12 +66,12 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     
     mensaje_final = f"Error de validación: {'; '.join(errores_lista)}"
 
-    # 2. Devolver la respuesta con TU esquema exacto
+    # Devolvemos el JSON real
     return JSONResponse(
         status_code=422,
         content={
             "exito": False,
-            "session_id": None, # No hay sesión porque falló la entrada
+            "session_id": None,
             "mensaje": mensaje_final,
             "sql_generado": None,
             "datos": [],
@@ -56,7 +82,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             "grafica_base64": None
         }
     )
-# ------------------------------------------------------------------
 
 
 # Ruta raíz
